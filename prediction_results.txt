@@ -1,0 +1,2 @@
+Predicted Class: 0
+Class Probabilities: [0.7308796644210815, 0.26912030577659607]

@@ -8,6 +8,7 @@ from PIL import Image, ImageTk
 from scipy.signal import spectrogram
 from sklearn.preprocessing import StandardScaler
 
+
 def open_file_dialog():
     global file_path, filename
     file_path = filedialog.askopenfilename(
@@ -91,8 +92,8 @@ def display_prediction():
         type_prediction.config(text=f'The audio file is MODIFIED')
     
     guess_probability.config(text=f'Confidence Level: {class_probabilities[predicted_class]}%')
-    method_prediction.config(text=f'Modification Type: Unmodified')
-    #method_prediction.config(text=f'Modification Type: Modified')
+    #method_prediction.config(text=f'Modification Type: Legitimate')
+    method_prediction.config(text=f'Modification Type: Voice Synthesis')
 
 root = tk.Tk()
 root.title("Audio DeepFake Detector")

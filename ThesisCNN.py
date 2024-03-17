@@ -3,7 +3,7 @@ from torchvision import transforms
 import torch.nn.functional as F
 
 class SimpleCNN(nn.Module):
-    def __init__(self, num_classes=2):
+    def __init__(self, num_classes=4):
         super(SimpleCNN, self).__init__()
 
         self.relu = nn.ReLU()
@@ -16,11 +16,10 @@ class SimpleCNN(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.drop = nn.Dropout(p=0.2)
 
-        #self.line1 = nn.Linear(200, 64)
-        self.line1 = nn.Linear(72, 64)
+        self.line1 = nn.Linear(200, 64)
+        #self.line1 = nn.Linear(72, 64)
         #self.line1 = nn.Linear(32, 64)
-
-        self.line2 = nn.Linear(64, 2)
+        self.line2 = nn.Linear(64, 3) # The number of desired output classes is the second parameter here
         self.flatten = nn.Flatten()
 
         #5x5 Conv Layer
@@ -84,9 +83,9 @@ class SimpleCNN(nn.Module):
         res = F.interpolate(res, size=(con.size(2), con.size(3)), mode='nearest')
         x = con + res
         x = self.pool(self.relu(x))
-
+        
         x = self.flatten(x)
-
+        
         x = self.drop(self.line1(x))
         x = self.relu(self.bn1d(x))
         x = self.drop(self.line2(x))
@@ -95,9 +94,4 @@ class SimpleCNN(nn.Module):
 
         return x
 
-transform = transforms.Compose([
-    transforms.Resize((128, 128)),
-    transforms.ToTensor(),
-])
-
-model = SimpleCNN(num_classes=2)
+model = SimpleCNN(num_classes=4)

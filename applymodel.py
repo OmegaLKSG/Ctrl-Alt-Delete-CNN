@@ -8,8 +8,8 @@ from torchvision import transforms
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
 
-model = SimpleCNN(num_classes=2)
-pth_path = os.path.join(script_directory, '4class_model.pth')
+model = SimpleCNN(num_classes=4)
+pth_path = os.path.join(script_directory, '4class_model (2).pth')
 model.load_state_dict(torch.load(pth_path))
 model.eval()
 
@@ -21,7 +21,7 @@ if __name__ == "__main__":
 image = Image.open(image_path).convert('RGB')
 
 transform = transforms.Compose([
-    transforms.Resize((128, 128)),
+    transforms.Resize((224, 224)),
     transforms.ToTensor(),
 ])
 

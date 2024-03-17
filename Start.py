@@ -20,20 +20,31 @@ def open_file_dialog():
         ]
     )
     if file_path:
-        transform_button.place(x=190, y=40)
+        reset_prediction_display()  # Reset prediction display elements
+        transform_button.grid(row=1, column=1, padx=10, pady=5)  # Display the button below the "Selected Audio" text
         filename = os.path.basename(file_path)
         file_name.config(text=f"Selected Audio: {filename}")
+
+def reset_prediction_display():
+    # Clear previous prediction outputs
+    image_label.config(image='')
+    guess_probability.config(text='')
+    type_prediction.config(text='')
+    method_prediction.config(text='')
+
 
 def generate_spectrogram():
     if file_path:
         spectrogram_save_path = os.path.join(output_folder, f"{os.path.splitext(os.path.basename(file_path))[0]}_spectrogram.png")
         mp3_to_spectrogram(file_path, spectrogram_save_path)
         open_image(spectrogram_save_path)
-        transform_button.place(x=465, y=115)
+        transform_button.grid(row=4, column=0, padx=10, pady=5)  # Display the button
         os.system(f"python applymodel.py \"{spectrogram_save_path}\"")
         display_prediction()
+        transform_button.grid_remove()  # Hide the button after prediction
     else:
         file_name.config(text="No audio file selected.")
+
 
 # Transforms audio file into a normalized log-spectrogram image
 def mp3_to_spectrogram(file_path, save_path=None):
@@ -87,12 +98,22 @@ def display_prediction():
 
     if predicted_class == 0:
         type_prediction.config(text=f'The audio file is LEGITIMATE')
-    elif predicted_class == 1:
+    elif predicted_class != 0:
         type_prediction.config(text=f'The audio file is MODIFIED')
     
+    match predicted_class:
+        case 0:
+            method_prediction.config(text=f'Modification Type: Unmodified')
+        case 1:
+            method_prediction.config(text=f'Modification Type: Voice Synthesis')
+        case 2:
+            method_prediction.config(text=f'Modification Type: Voice Changer')
+        case 3:
+            method_prediction.config(text=f'Modification Type: Voice Modulation')
+        case 4:
+            method_prediction.config(text=f'Modification Type: Voice Splicing')
+        
     guess_probability.config(text=f'Confidence Level: {class_probabilities[predicted_class]}%')
-    method_prediction.config(text=f'Modification Type: Unmodified')
-    #method_prediction.config(text=f'Modification Type: Modified')
 
 root = tk.Tk()
 root.title("Audio DeepFake Detector")

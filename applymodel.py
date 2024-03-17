@@ -9,7 +9,7 @@ from torchvision import transforms
 script_directory = os.path.dirname(os.path.abspath(__file__))
 
 model = SimpleCNN(num_classes=2)
-pth_path = os.path.join(script_directory, 'thesiscnn_model.pth')
+pth_path = os.path.join(script_directory, '4class_model.pth')
 model.load_state_dict(torch.load(pth_path))
 model.eval()
 

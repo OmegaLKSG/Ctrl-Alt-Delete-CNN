@@ -20,31 +20,28 @@ def open_file_dialog():
         ]
     )
     if file_path:
-        reset_prediction_display()  # Reset prediction display elements
-        transform_button.grid(row=1, column=1, padx=10, pady=5)  # Display the button below the "Selected Audio" text
+        reset_prediction_display()
+        transform_button.grid(row=1, column=1, padx=10, pady=5)
         filename = os.path.basename(file_path)
         file_name.config(text=f"Selected Audio: {filename}")
 
 def reset_prediction_display():
-    # Clear previous prediction outputs
     image_label.config(image='')
     guess_probability.config(text='')
     type_prediction.config(text='')
     method_prediction.config(text='')
-
 
 def generate_spectrogram():
     if file_path:
         spectrogram_save_path = os.path.join(output_folder, f"{os.path.splitext(os.path.basename(file_path))[0]}_spectrogram.png")
         mp3_to_spectrogram(file_path, spectrogram_save_path)
         open_image(spectrogram_save_path)
-        transform_button.grid(row=4, column=0, padx=10, pady=5)  # Display the button
+        transform_button.grid(row=4, column=0, padx=10, pady=5)
         os.system(f"python applymodel.py \"{spectrogram_save_path}\"")
         display_prediction()
-        transform_button.grid_remove()  # Hide the button after prediction
+        transform_button.grid_remove()
     else:
         file_name.config(text="No audio file selected.")
-
 
 # Transforms audio file into a normalized log-spectrogram image
 def mp3_to_spectrogram(file_path, save_path=None):
@@ -115,13 +112,50 @@ def display_prediction():
         
     guess_probability.config(text=f'Confidence Level: {class_probabilities[predicted_class]}%')
 
+    with open(history_file_path, "a") as history_file:
+        history_file.write(f"Filename: {filename}\n")
+        history_file.write(f"Type: {'LEGITIMATE' if predicted_class == 0 else 'MODIFIED'}\n")
+        history_file.write(f"Confidence Level: {class_probabilities[predicted_class]}%\n\n")
+
+def display_history():
+    history_window = tk.Toplevel(root)
+    history_window.title("Checking History")
+    history_window.geometry("600x400")
+    history_window.resizable(False, False)
+
+    frame = tk.Frame(history_window)
+    frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    history_text = tk.Text(frame, wrap=tk.WORD, font=("Arial", 10))
+    history_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    scroll_bar = tk.Scrollbar(frame, command=history_text.yview)
+    scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
+    history_text.config(yscrollcommand=scroll_bar.set)
+
+    try:
+        with open(history_file_path, "r") as history_file:
+            history_data = history_file.read()
+
+        if history_data:
+            history_text.insert(tk.END, history_data)
+        else:
+            history_text.insert(tk.END, "No history found.")
+    except FileNotFoundError:
+        history_text.insert(tk.END, "No history found.")
+
+    history_text.config(state=tk.DISABLED)
+
+
 root = tk.Tk()
 root.title("Audio DeepFake Detector")
-root.geometry("750x150")
+root.geometry("750x250")
 root.resizable(False, False)
 
+history_label = tk.Label(root, text="", wraplength=600, justify="left")
+
 audio_button = tk.Button(root, text="Open Audio File", command=open_file_dialog, width=20, height=1)
-history_button = tk.Button(root, text="View Checking History", width=20, height=1)
+history_button = tk.Button(root, text="View Checking History", command=display_history, width=20, height=1)
 transform_button = tk.Button(root, text="Perform Prediction", command=generate_spectrogram, width=20, height=1)
 api_button = tk.Button(root, text="API Settings", width=20, height=1)
 documentation_button = tk.Button(root, text="View Documentation", width=20, height=1)
@@ -139,7 +173,7 @@ documentation_button.grid(row=3, column=0, padx=10, pady=5)
 #transform_button.grid(row=2, column=0, padx=10, pady=5)
 #transform_button.place(x=465, y=95)
 transform_button.grid_remove()
-history_button.configure(state='disabled')
+
 api_button.configure(state='disabled')
 documentation_button.configure(state='disabled')
 
@@ -155,5 +189,12 @@ root.columnconfigure(1, minsize=225)
 root.columnconfigure(2, minsize=0)
 
 output_file_path = "prediction_results.txt"
+
+# Define the directory for storing history files
+history_directory = os.path.join(script_directory, 'History')
+os.makedirs(history_directory, exist_ok=True)
+
+# Define the path for the history file
+history_file_path = os.path.join(history_directory, 'history.txt')
 
 root.mainloop()

@@ -1,0 +1,4 @@
+Filename: Recording0005.wav
+Type: LEGITIMATE
+Confidence Level: 57.61%
+

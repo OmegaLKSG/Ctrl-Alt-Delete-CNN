@@ -7,6 +7,7 @@ from tkinter import filedialog
 from PIL import Image, ImageTk
 from scipy.signal import spectrogram
 from sklearn.preprocessing import StandardScaler
+import sys
 
 def open_file_dialog():
     global file_path, filename
@@ -37,7 +38,14 @@ def generate_spectrogram():
         mp3_to_spectrogram(file_path, spectrogram_save_path)
         open_image(spectrogram_save_path)
         transform_button.grid(row=4, column=0, padx=10, pady=5)
-        os.system(f"python applymodel.py \"{spectrogram_save_path}\"")
+
+        applymodel_path = os.path.join(script_directory, "applymodel.py")
+        if os.path.exists(applymodel_path):
+            os.system(f"python \"{applymodel_path}\" \"{spectrogram_save_path}\"")
+            display_prediction()
+        else:
+            file_name.config(text="applymodel.py not found.")
+            
         display_prediction()
         transform_button.grid_remove()
     else:
@@ -79,6 +87,12 @@ def open_image(image_path):
     root.geometry("750x340")
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
+print(f"Script directory: {script_directory}")
+
+# Add the script's directory to the system path
+sys.path.append(script_directory)
+print(f"System path: {sys.path}")
+
 output_folder = os.path.join(script_directory, r'Image')
 os.makedirs(output_folder, exist_ok=True)
 
@@ -106,8 +120,6 @@ def display_prediction():
         case 2:
             method_prediction.config(text=f'Modification Type: Voice Changer')
         case 3:
-            method_prediction.config(text=f'Modification Type: Voice Modulation')
-        case 4:
             method_prediction.config(text=f'Modification Type: Voice Splicing')
         
     guess_probability.config(text=f'Confidence Level: {class_probabilities[predicted_class]}%')
@@ -146,6 +158,47 @@ def display_history():
 
     history_text.config(state=tk.DISABLED)
 
+def display_documentation():
+    documentation_window = tk.Toplevel(root)
+    documentation_window.title("Documentation")
+    documentation_window.geometry("600x400")
+    documentation_window.resizable(False, False)
+
+    frame = tk.Frame(documentation_window)
+    frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    documentation_text = tk.Text(frame, wrap=tk.WORD, font=("Arial", 10))
+    documentation_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    scroll_bar = tk.Scrollbar(frame, command=documentation_text.yview)
+    scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
+    documentation_text.config(yscrollcommand=scroll_bar.set)
+
+    # Example documentation text
+    documentation = """
+    Audio DeepFake Detector Documentation
+
+    This application is designed to detect audio deepfakes. It processes audio files, 
+    generates spectrograms, and uses a pre-trained model to classify the audio as legitimate 
+    or modified. The modifications can include various techniques such as voice synthesis, 
+    voice changers, voice modulation, and voice splicing.
+
+    Usage:
+    1. Click "Open Audio File" to select an audio file.
+    2. Click "Perform Prediction" to generate the spectrogram and classify the audio.
+    3. View the prediction results displayed on the main window.
+    4. Click "View Checking History" to see past predictions.
+
+    Note:
+    The application currently supports MP3 and WAV audio formats.
+    """
+
+    documentation_text.insert(tk.END, documentation)
+    documentation_text.config(state=tk.DISABLED)
+
+    return_button = tk.Button(documentation_window, text="Return to Startup", command=documentation_window.destroy)
+    return_button.pack(side=tk.BOTTOM, anchor='w', padx=10, pady=10)
+
 
 root = tk.Tk()
 root.title("Audio DeepFake Detector")
@@ -158,7 +211,7 @@ audio_button = tk.Button(root, text="Open Audio File", command=open_file_dialog,
 history_button = tk.Button(root, text="View Checking History", command=display_history, width=20, height=1)
 transform_button = tk.Button(root, text="Perform Prediction", command=generate_spectrogram, width=20, height=1)
 api_button = tk.Button(root, text="API Settings", width=20, height=1)
-documentation_button = tk.Button(root, text="View Documentation", width=20, height=1)
+documentation_button = tk.Button(root, text="View Documentation", command=display_documentation, width=20, height=1)
 
 file_name = tk.Label(root, text="")
 image_label = tk.Label(root)
@@ -175,7 +228,6 @@ documentation_button.grid(row=3, column=0, padx=10, pady=5)
 transform_button.grid_remove()
 
 api_button.configure(state='disabled')
-documentation_button.configure(state='disabled')
 
 file_name.place(x=170, y=7)
 image_label.place(x=180, y=45)
@@ -188,7 +240,7 @@ root.columnconfigure(0, minsize=0)
 root.columnconfigure(1, minsize=225)
 root.columnconfigure(2, minsize=0)
 
-output_file_path = "prediction_results.txt"
+output_file_path = os.path.join(script_directory, "prediction_results.txt")
 
 # Define the directory for storing history files
 history_directory = os.path.join(script_directory, 'History')

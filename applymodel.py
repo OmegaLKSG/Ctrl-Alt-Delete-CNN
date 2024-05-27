@@ -1,7 +1,7 @@
 import torch
 from torchvision import transforms
 from PIL import Image
-from ThesisCNN import SimpleCNN
+from ThesisModeCNN import SimpleCNN
 import os
 import sys
 from torchvision import transforms
@@ -9,7 +9,7 @@ from torchvision import transforms
 script_directory = os.path.dirname(os.path.abspath(__file__))
 
 model = SimpleCNN(num_classes=4)
-pth_path = os.path.join(script_directory, '4class_model (2).pth')
+pth_path = os.path.join(script_directory, '4class_model (6).pth')
 model.load_state_dict(torch.load(pth_path))
 model.eval()
 

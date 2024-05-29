@@ -38,20 +38,19 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         folder_path = sys.argv[1]
 
-        output = io.StringIO()
+        output = io.StringIO(newline='')
         csv_writer = csv.writer(output)
-
+        
         header = ['filename', 'predicted_class'] + [f'class_{i}_probability' for i in range(4)]
         csv_writer.writerow(header)
-        
+
+        #_segment_0_spectrogram.png
         for filename in os.listdir(folder_path):
             file_path = os.path.join(folder_path, filename)
-            result = classify_image(file_path)
-            prediction = result['predicted_class']
-            confidence = max(result['class_probabilities'])
-            
-            row = [result['filename'],prediction] + confidence
-            csv_writer.writerow(row)
+            if os.path.isfile(file_path):
+                result = classify_image(file_path)
+                row = [result['filename'], result['predicted_class']] + result['class_probabilities']
+                csv_writer.writerow(row)
 
         print(output.getvalue())
         output.close()

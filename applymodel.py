@@ -17,7 +17,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         image_path = sys.argv[1]
 
-#image_path = os.path.join(script_directory, 'biden-to-linus_clip_2_segment_1.png')
 image = Image.open(image_path).convert('RGB')
 
 transform = transforms.Compose([
@@ -34,3 +33,9 @@ with torch.no_grad():
 
 print(f'Predicted Class: {predicted_class.item()}')
 print(f'Class Probabilities: {probabilities.squeeze().tolist()}')
+
+prediction_results_path = os.path.join(script_directory, "prediction_results.txt")
+
+with open(prediction_results_path, 'w') as f:
+    print(f'Predicted Class: {predicted_class.item()}', file=f)
+    print(f'Class Probabilities: {probabilities.squeeze().tolist()}', file=f)

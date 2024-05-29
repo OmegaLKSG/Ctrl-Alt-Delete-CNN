@@ -1,9 +1,1 @@
-Filename,Predicted Class,Class Probabilities
-Genuine Audio 1_segment_0_spectrogram.png,0,"[0.5761168003082275, 0.21194158494472504, 0.21194162964820862]"
-Genuine Audio 2_segment_0_spectrogram.png,0,"[0.5761000514030457, 0.21194523572921753, 0.21195466816425323]"
-Genuine Audio 3_segment_0_spectrogram.png,0,"[0.574360191822052, 0.2123100757598877, 0.21332970261573792]"
-Genuine Audio 4_segment_0_spectrogram.png,0,"[0.5759651064872742, 0.21197357773780823, 0.2120613306760788]"
-Synth Audio 1_segment_0_spectrogram.png,2,"[0.213215634226799, 0.21228894591331482, 0.5744954347610474]"
-Synth Audio 2_segment_0_spectrogram.png,2,"[0.213371142745018, 0.21257084608078003, 0.5740579962730408]"
-Synth Audio 3_segment_0_spectrogram.png,2,"[0.230342298746109, 0.31088292598724365, 0.45877477526664734]"
-Synth Audio 4_segment_0_spectrogram.png,2,"[0.21913962066173553, 0.21391159296035767, 0.5669487714767456]"
+filename,predicted_class,class_0_probability,class_1_probability,class_2_probability,class_3_probability

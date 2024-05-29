@@ -54,7 +54,6 @@ if __name__ == "__main__":
         if not folder_path:
             file_name.config(text="No folder selected.")
             return
-        # Create the output folder if it does not exist
         output_folder_path = os.path.join(output_folder, 'Mass')
         os.makedirs(output_folder_path, exist_ok=True)
 
@@ -97,49 +96,45 @@ if __name__ == "__main__":
                 except Exception as e:
                     print(f"Error processing {file_path}: {e}")
 
-        file_name.config(text="Mass spectrogram generation completed.")
         classify_and_save_predictions_to_csv()
 
     def classify_and_save_predictions_to_csv():
-        output_csv_path = os.path.join(script_directory, 'mass_prediction_results.csv')
+
         mass_applymodel_path = os.path.join(script_directory, "massapplymodel.py")
 
         if not os.path.exists(mass_applymodel_path):
             file_name.config(text="massapplymodel.py not found.")
             return
-        
-        output_folder_path = os.path.join(output_folder, 'Mass')
-        mass_output_file_path = os.path.join(script_directory, 'mass_prediction_results.csv')
-        
+
         result = subprocess.run(["python", mass_applymodel_path, output_folder_path], capture_output=True, text=True)
-        print(f"Subprocess result: {result.stdout}")
 
         try:
-            with open(mass_output_file_path, 'r') as csv_file:
-                csv_output = io.StringIO(result.stdout)
-                csv_reader = csv.reader(csv_output)
-                header = next(csv_reader)
-                print(f"Header: {header}")
-                csv_writer = csv.writer(csv_file)
-                csv_writer.writerow(['Filename', 'Type', 'Confidence Level'])
-
+            csv_output = io.StringIO(result.stdout)
+            csv_reader = csv.reader(csv_output)
+            header = next(csv_reader, None)
+            if header is not None:
+                with open(output_csv_path, 'w', newline='') as csv_file:
+                    csv_writer = csv.writer(csv_file)
+                    csv_writer.writerow(header)
+                    for row in csv_reader:
+                        csv_writer.writerow(row)
+            else:
+                with open(output_csv_path, 'w', newline='') as csv_file:
+                    csv_writer = csv.writer(csv_file)
+                    csv_writer.writerow(header)
+                    for row in csv_reader:
+                        csv_writer.writerow(row)
         except Exception as e:
             print(f"Error reading output file: {e}")
+            import traceback
+            traceback.print_exc()
         display_predictions_csv(output_csv_path, output_folder_path)
+        file_name.config(text=f"Prediction results have been printed to {output_csv_path}.")
 
-    def display_predictions_csv(mass_output_file_path, output_folder_path):
-        def on_window_close():
-            combined_command(csv_window, output_folder_path)
-        csv_window = tk.Toplevel(root)
-        csv_window.title("Predictions")
-        csv_window.geometry("1100x500")
-        csv_window.resizable(False, False)
-        
-        csv_window.protocol("WM_DELETE_WINDOW", on_window_close)  
-        
+    def create_treeview(csv_window, mass_output_file_path):
         frame = tk.Frame(csv_window)
         frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
+
         tree = ttk.Treeview(frame, columns=('Filename', 'Type', 'Confidence Level'), show='headings')
         tree.heading('Filename', text='Filename')
         tree.heading('Type', text='Type')
@@ -148,18 +143,52 @@ if __name__ == "__main__":
         vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
         vsb.pack(side='right', fill='y')
         tree.configure(yscrollcommand=vsb.set)
-        
         tree.pack(fill=tk.BOTH, expand=True)
-        
+
         with open(mass_output_file_path, mode='r') as csv_file:
             csv_reader = csv.reader(csv_file)
-            next(csv_reader)
+            next(csv_reader, None) 
             for row in csv_reader:
-                tree.insert('', 'end', values=row)
-        
+                if not any(row):
+                    continue
+                float_values = [float(value) for value in row[2:6]]
+                max_value = max(float_values) * 100
+                formatted_max_value = "{:.4f}".format(max_value)
+                last_insert = row[:2]
+                last_insert.append(formatted_max_value)
+                tree.insert('', 'end', values=last_insert)
+
+        return tree
+
+    def display_predictions_csv(mass_output_file_path, output_folder_path):
+        def on_window_close():
+            combined_command(csv_window, output_folder_path)
+
+        csv_window = tk.Toplevel(root)
+        csv_window.title("Predictions")
+        csv_window.geometry("1100x500")
+        csv_window.resizable(False, False)
+        csv_window.protocol("WM_DELETE_WINDOW", on_window_close)
+
+        tree = create_treeview(csv_window, mass_output_file_path)
+
         return_button = tk.Button(csv_window, text="Close", command=lambda: combined_command(csv_window, output_folder_path))
         return_button.pack(side=tk.BOTTOM, anchor='w', padx=10, pady=10)
-        
+        mass_history_button.config(state=tk.NORMAL)
+
+    def redisplay_predictions():
+        def on_window_close():
+            combined_command(csv_window, output_folder_path)
+        csv_window = tk.Toplevel(root)
+        csv_window.title("Predictions")
+        csv_window.geometry("1100x500")
+        csv_window.resizable(False, False)
+        csv_window.protocol("WM_DELETE_WINDOW", on_window_close)
+
+        tree = create_treeview(csv_window, output_csv_path)
+        return_button = tk.Button(csv_window, text="Close", command=lambda: combined_command(csv_window, output_folder_path))
+        return_button.pack(side=tk.BOTTOM, anchor='w', padx=10, pady=10)
+
     def combined_command(csv_window, folder_path):
         for filename in os.listdir(folder_path):
             if filename.lower().endswith('.png'):
@@ -224,6 +253,7 @@ if __name__ == "__main__":
         root.geometry("750x340")
 
     script_directory = os.path.dirname(os.path.abspath(__file__))
+    output_csv_path = os.path.join(script_directory, 'mass_prediction_results.csv')
     print(f"Script directory: {script_directory}")
 
     sys.path.append(script_directory)
@@ -322,7 +352,7 @@ if __name__ == "__main__":
     def display_documentation():
         documentation_window = tk.Toplevel(root)
         documentation_window.title("Documentation")
-        documentation_window.geometry("600x400")
+        documentation_window.geometry("620x400")
         documentation_window.resizable(False, False)
 
         frame = tk.Frame(documentation_window)
@@ -338,11 +368,13 @@ if __name__ == "__main__":
         documentation = """
         Audio DeepFake Detector Documentation
 
-        This application is designed to detect audio deepfakes. It processes audio files, transforms them into 
-        spectrograms, and uses a Convolutional Neural Networkk called ResEfficient CNN to classify the audio as 
-        legitimate or modified. The modifications can include various techniques such as voice synthesis, 
-        voice changers, voice modulation, and voice splicing.
-
+        This application is designed to detect audio deepfakes. It processes audio files, transforms 
+        them into spectrograms, and uses a Convolutional Neural Network called ResEfficient 
+        CNN to classify the audio as legitimate or modified. The modifications can include various 
+        techniques such as voice synthesis, voice changers, and voice splicing.
+        
+        Instructions:
+        
         For Individual File Checking:
         1. Click "Open Audio File" to select an audio file.
         2. Click "Perform Prediction" to generate the spectrogram and classify the audio.
@@ -356,8 +388,19 @@ if __name__ == "__main__":
         4. View the prediction results displayed on the new window.
         5. The results will be output to a csv file in the installation folder.
         
-        Note:
-        The application currently supports MP3 and WAV audio formats.
+        The system is capable of detecting four types of voice audio indicated by number:
+            0 Corresponds to real unmodified voice audio.
+            1 Corresponds to synthetic or text-to-speech voice audio.
+            2 Corresponds to audio modified using a voice changer.
+            3 Corresponds to voice audio that has been cut and spliced together.
+            
+        This system works by transforming audio files into spectrogram images, and then using those
+        spectrogram images to classify the audio and determine whether the voice audio is modified,
+        and what kind of modification that voice audio has undergone.
+        
+        To test the capabilities of the system, several files are provided in the "Test Audio" folder
+        for the user's convenience. These audio files consist of real voices, synthetic voices, voice 
+        changed voices, and voice spliced voices.
         """
 
         documentation_text.insert(tk.END, documentation)
@@ -371,18 +414,22 @@ if __name__ == "__main__":
             widget.grid_remove()
         return_button = tk.Button(root, text="Return", command=show_initial_menu, width=20, height=1)
         folder_button.grid(row=0, column=0, padx=10, pady=5)
+        mass_history_button.grid(row=1, column=0, padx=10, pady=5)
+        mass_history_button.config(state=tk.DISABLED)
         file_name.config(text=" ")
         return_button.place(x=10, y=215)
 
     def show_initial_menu():
         for widget in root.winfo_children():
             widget.place_forget()
+        root.geometry("750x250")
         audio_button.grid(row=0, column=0, padx=10, pady=5)
         history_button.grid(row=1, column=0, padx=10, pady=5)
         api_button.grid(row=2, column=0, padx=10, pady=5)
         documentation_button.grid(row=3, column=0, padx=10, pady=5)
         transform_button.grid_remove()
         folder_button.grid_remove()
+        mass_history_button.grid_remove()
         mass_transform_button.grid_remove()
         file_name.config(text=" ")
         file_name.place(x=170, y=7)
@@ -400,6 +447,7 @@ if __name__ == "__main__":
     audio_button = tk.Button(root, text="Open Audio File", command=open_file_dialog, width=20, height=1)
     folder_button = tk.Button(root, text="Mass Prediction", command=open_folder_dialog, width=20, height=1)
     history_button = tk.Button(root, text="View Checking History", command=display_history, width=20, height=1)
+    mass_history_button = tk.Button(root, text="Review Mass Prediction", command=redisplay_predictions, width=20, height=1)
     transform_button = tk.Button(root, text="Perform Prediction", command=generate_spectrogram, width=20, height=1)
     mass_transform_button = tk.Button(root, text="Perform Mass Prediction", command=mass_generate_spectrogram, width=20, height=1)
     api_button = tk.Button(root, text="API Settings", command=api_settings, width=20, height=1)
@@ -428,6 +476,7 @@ if __name__ == "__main__":
     root.columnconfigure(2, minsize=0)
 
     output_file_path = os.path.join(script_directory, "prediction_results.txt")
+    output_folder_path = os.path.join(output_folder, 'Mass')
 
     history_directory = os.path.join(script_directory, 'History')
     os.makedirs(history_directory, exist_ok=True)

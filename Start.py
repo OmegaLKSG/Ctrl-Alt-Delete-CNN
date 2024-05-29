@@ -128,10 +128,14 @@ if __name__ == "__main__":
         display_predictions_csv(output_csv_path, output_folder_path)
 
     def display_predictions_csv(mass_output_file_path, output_folder_path):
+        def on_window_close():
+            combined_command(csv_window, output_folder_path)
         csv_window = tk.Toplevel(root)
         csv_window.title("Predictions")
         csv_window.geometry("1100x500")
         csv_window.resizable(False, False)
+        
+        csv_window.protocol("WM_DELETE_WINDOW", on_window_close)  
         
         frame = tk.Frame(csv_window)
         frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -162,7 +166,6 @@ if __name__ == "__main__":
                 file_path = os.path.join(folder_path, filename)
                 try:
                     os.remove(file_path)
-                    #print(f"Deleted: {file_path}")
                 except Exception as e:
                     print(f"Error deleting {file_path}: {e}")
         csv_window.destroy()
@@ -180,8 +183,7 @@ if __name__ == "__main__":
                 display_prediction()
             else:
                 file_name.config(text="applymodel.py not found.")
-                
-            display_prediction()
+            
             transform_button.grid_remove()
         else:
             file_name.config(text="No audio file selected.")

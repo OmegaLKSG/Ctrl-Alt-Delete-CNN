@@ -18,21 +18,15 @@ The system utilizes a modified version of Subramani and Rao’s Multi-ResEfficie
 
 The system requires the following dependencies, which can also be seen and installed through the requirements.txt file. To use this program, you need an internet connection, python 3.6+ and all of the required packages installed. To install the required packages, run: pip3 install -r requirements.txt
 
-•	Python 3.11.8
-
-•	Librosa 0.10.1
-
-•	Numpy 1.26.4
-
-•	Matplotlib 3.8.3
-
-•	Pillow 10.2.0
-
-•	Scikit-learn 1.4.1.post1
-
-•	Torch 2.2.1
-
-•	Torchvision 0.17.1
+•	librosa==0.10.1
+•	matplotlib==3.8.3
+•	numpy==1.26.4
+•	pandas==2.2.2
+•	Pillow==10.3.0
+•	scikit_learn==1.4.1.post1
+•	scipy==1.13.1
+•	torch==2.2.1
+•	torchvision==0.17.1
 
 The user must install these Python dependencies first before being able to use the program.
 

@@ -9,7 +9,7 @@ from torchvision import transforms
 script_directory = os.path.dirname(os.path.abspath(__file__))
 
 model = SimpleCNN(num_classes=4)
-pth_path = os.path.join(script_directory, '4class_model (6).pth')
+pth_path = os.path.join(script_directory, '4class_model New Algo New Dataset 4.pth')
 model.load_state_dict(torch.load(pth_path))
 model.eval()
 
@@ -34,10 +34,3 @@ with torch.no_grad():
 
 print(f'Predicted Class: {predicted_class.item()}')
 print(f'Class Probabilities: {probabilities.squeeze().tolist()}')
-
-output_file_path = os.path.join(script_directory, 'prediction_results.txt')
-with open(output_file_path, 'w') as output_file:
-    output_file.write(f'Predicted Class: {predicted_class.item()}\n')
-    output_file.write(f'Class Probabilities: {probabilities.squeeze().tolist()}\n')
-
-print(f'Prediction results written to: {output_file_path}')

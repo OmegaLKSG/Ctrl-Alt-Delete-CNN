@@ -154,7 +154,18 @@ if __name__ == "__main__":
                 float_values = [float(value) for value in row[2:6]]
                 max_value = max(float_values) * 100
                 formatted_max_value = "{:.4f}".format(max_value)
+
                 last_insert = row[:2]
+                
+                if last_insert[1] == '1':
+                    last_insert[1] = 'Voice Synthesized'
+                elif last_insert[1] == '2':
+                    last_insert[1] = 'Voice Changed'
+                elif last_insert[1] == '3':
+                    last_insert[1] = 'Voice Spliced'
+                elif last_insert[1] == '0':
+                    last_insert[1] = 'Unmodified'
+                    
                 last_insert.append(formatted_max_value)
                 tree.insert('', 'end', values=last_insert)
 
@@ -410,6 +421,7 @@ if __name__ == "__main__":
         return_button.pack(side=tk.BOTTOM, anchor='w', padx=10, pady=10)
 
     def api_settings():
+        show_initial_menu()
         for widget in root.winfo_children():
             widget.grid_remove()
         return_button = tk.Button(root, text="Return", command=show_initial_menu, width=20, height=1)
@@ -420,6 +432,9 @@ if __name__ == "__main__":
         return_button.place(x=10, y=215)
 
     def show_initial_menu():
+        reset_prediction_display()
+        transform_button.grid_remove()
+        file_name.grid_remove()
         for widget in root.winfo_children():
             widget.place_forget()
         root.geometry("750x250")
@@ -427,6 +442,7 @@ if __name__ == "__main__":
         history_button.grid(row=1, column=0, padx=10, pady=5)
         api_button.grid(row=2, column=0, padx=10, pady=5)
         documentation_button.grid(row=3, column=0, padx=10, pady=5)
+        image_label.grid_remove()
         transform_button.grid_remove()
         folder_button.grid_remove()
         mass_history_button.grid_remove()

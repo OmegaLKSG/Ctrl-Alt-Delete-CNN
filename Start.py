@@ -415,9 +415,17 @@ if __name__ == "__main__":
         spectrogram images to classify the audio and determine whether the voice audio is modified,
         and what kind of modification that voice audio has undergone.
         
+        IMPORTANT NOTE:
+        Do note that the confidence level of the system is simply the model's output probability for
+        the given audio file to be the corresponding type. The closer the confidence level is to 50%,
+        the more confident the model is in its prediction that the audio file is what the model says
+        it is. The model is not 100% accurate however, and we cannot claim it to be. 
+        
         To test the capabilities of the system, several files are provided in the "Test Audio" folder
         for the user's convenience. These audio files consist of real voices, synthetic voices, voice 
         changed voices, and voice spliced voices.
+        
+        
         """
 
         documentation_text.insert(tk.END, documentation)
@@ -431,7 +439,6 @@ if __name__ == "__main__":
         for widget in root.winfo_children():
             if isinstance(widget, tk.Button) and widget in [api_button, documentation_button]:
                 widget.grid_remove()
-                
         
         folder_button.grid(row=0, column=0, padx=10, pady=5)
         mass_history_button.grid(row=1, column=0, padx=10, pady=5)
@@ -444,7 +451,7 @@ if __name__ == "__main__":
                 mass_history_button.config(state=tk.NORMAL)
                 
         file_name.config(text=" ")
-        return_button.grid(row=5, column=0, padx=10, pady=5, sticky="s")
+        return_button.grid(row=3, column=0, padx=10, pady=5, sticky="s")
         #return_button.place(x=10, y=215)
 
     def show_initial_menu():

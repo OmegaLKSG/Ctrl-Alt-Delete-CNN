@@ -4,7 +4,6 @@ from PIL import Image
 from ThesisModeCNN import SimpleCNN
 import os
 import sys
-from torchvision import transforms
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
 
@@ -17,13 +16,12 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         image_path = sys.argv[1]
 
-image = Image.open(image_path).convert('RGB')
-
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
 ])
 
+image = Image.open(image_path).convert('RGB')
 input_image = transform(image).unsqueeze(0)
 
 with torch.no_grad():

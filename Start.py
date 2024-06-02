@@ -230,7 +230,7 @@ if __name__ == "__main__":
 
     # Transforms audio file into a normalized log-spectrogram image
     def mp3_to_spectrogram(file_path, save_path=None):
-        y, sr = librosa.load(file_path, sr=None)
+        y, sr = librosa.load(file_path, sr=16000, duration=5.0)
 
         f, t, Zxx = spectrogram(
             y, fs=sr, window='hamming', nperseg=int(sr * 0.108), noverlap=int(sr * 0.01)
@@ -423,20 +423,31 @@ if __name__ == "__main__":
     def api_settings():
         show_initial_menu()
         for widget in root.winfo_children():
-            widget.grid_remove()
-        return_button = tk.Button(root, text="Return", command=show_initial_menu, width=20, height=1)
+            if isinstance(widget, tk.Button) and widget in [api_button, documentation_button]:
+                widget.grid_remove()
+                
+        
         folder_button.grid(row=0, column=0, padx=10, pady=5)
         mass_history_button.grid(row=1, column=0, padx=10, pady=5)
         mass_history_button.config(state=tk.DISABLED)
+        
+        with open(output_csv_path, 'r') as csv_file:
+            csv_reader = csv.reader(csv_file)
+            has_content = any(row for row in csv_reader if row != ['FileName', 'Prediction'])
+            if has_content:
+                mass_history_button.config(state=tk.NORMAL)
+                
         file_name.config(text=" ")
-        return_button.place(x=10, y=215)
+        return_button.grid(row=5, column=0, padx=10, pady=5, sticky="s")
+        #return_button.place(x=10, y=215)
 
     def show_initial_menu():
         reset_prediction_display()
         transform_button.grid_remove()
         file_name.grid_remove()
         for widget in root.winfo_children():
-            widget.place_forget()
+            if isinstance(widget, tk.Tk) or isinstance(widget, tk.Frame):
+                widget.place_forget()
         root.geometry("750x250")
         audio_button.grid(row=0, column=0, padx=10, pady=5)
         history_button.grid(row=1, column=0, padx=10, pady=5)
@@ -444,6 +455,7 @@ if __name__ == "__main__":
         documentation_button.grid(row=3, column=0, padx=10, pady=5)
         image_label.grid_remove()
         transform_button.grid_remove()
+        return_button.grid_remove()
         folder_button.grid_remove()
         mass_history_button.grid_remove()
         mass_transform_button.grid_remove()
@@ -453,6 +465,11 @@ if __name__ == "__main__":
         guess_probability.place(x=475, y=65)
         method_prediction.place(x=475, y=85)
         type_prediction.place(x=475, y=45)
+    
+        # Remove the "Return" button
+        for widget in root.winfo_children():
+            if isinstance(widget, tk.Button) and widget.cget("text") == "Return":
+                widget.grid_remove()
 
     root.title("Audio DeepFake Detector")
     root.geometry("750x250")
@@ -468,6 +485,8 @@ if __name__ == "__main__":
     mass_transform_button = tk.Button(root, text="Perform Mass Prediction", command=mass_generate_spectrogram, width=20, height=1)
     api_button = tk.Button(root, text="API Settings", command=api_settings, width=20, height=1)
     documentation_button = tk.Button(root, text="View Documentation", command=display_documentation, width=20, height=1)
+    return_button = tk.Button(root, text="Return", command=show_initial_menu, width=20, height=1)
+    
 
     file_name = tk.Label(root, text="")
     image_label = tk.Label(root)
@@ -475,6 +494,7 @@ if __name__ == "__main__":
     type_prediction = tk.Label(root, text="")
     method_prediction = tk.Label(root, text="")
 
+    
     audio_button.grid(row=0, column=0, padx=10, pady=5)
     history_button.grid(row=1, column=0, padx=10, pady=5)
     api_button.grid(row=2, column=0, padx=10, pady=5)

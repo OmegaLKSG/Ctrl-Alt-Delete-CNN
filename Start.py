@@ -283,6 +283,8 @@ if __name__ == "__main__":
         predicted_class = int(predicted_class_line.split(":")[1].strip())
         class_probabilities_str = class_probabilities_line.split(":")[1].strip()
         class_probabilities = [round(float(value) * 100, 2) for value in class_probabilities_str.strip("[]").split(",")]
+        
+        prediction_type = ""
 
         if predicted_class == 0:
             type_prediction.config(text=f'The audio file is LEGITIMATE')
@@ -292,12 +294,16 @@ if __name__ == "__main__":
         match predicted_class:
             case 0:
                 method_prediction.config(text=f'Modification Type: Unmodified')
+                prediction_type = "Unmodified"
             case 1:
                 method_prediction.config(text=f'Modification Type: Voice Synthesis')
+                prediction_type = "Synthesis"
             case 2:
                 method_prediction.config(text=f'Modification Type: Voice Changer')
+                prediction_type = "Voice Changer"
             case 3:
                 method_prediction.config(text=f'Modification Type: Voice Splicing')
+                prediction_type = "Voice Splicing"
             
         guess_probability.config(text=f'Confidence Level: {class_probabilities[predicted_class]}%')
         
@@ -310,7 +316,7 @@ if __name__ == "__main__":
         
         with open(history_file_path, "a") as history_file:
             history_file.write(f"Filename: {filename}\n")
-            history_file.write(f"Type: {'LEGITIMATE' if predicted_class == 0 else 'MODIFIED'}\n")
+            history_file.write(f"Type: {prediction_type}\n")
             history_file.write(f"Confidence Level: {class_probabilities[predicted_class]}%\n\n")
 
     def display_history():

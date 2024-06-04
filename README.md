@@ -18,23 +18,13 @@ The system utilizes a modified version of Subramani and Rao’s Multi-ResEfficie
 
 **III.	Requirements**
 
-The system requires the following dependencies, which can also be seen and installed through the requirements.txt file. To use this program, you need an internet connection, python 3.6+ and all of the required packages installed. To install the required packages, run: pip3 install -r requirements.txt
+Running the program using the executable file does not require any installation.
 
-•	librosa==0.10.1
-•	matplotlib==3.8.3
-•	numpy==1.26.4
-•	pandas==2.2.2
-•	Pillow==10.3.0
-•	scikit_learn==1.4.1.post1
-•	scipy==1.13.1
-•	torch==2.2.1
-•	torchvision==0.17.1
-
-The user must install these Python dependencies first before being able to use the program.
+The program requires at least 400MB of free disk space. The program only works on Windows.
 
 **IV.	Instructions on Usage**
 
-The system opens using the Start.py file. On your console, type in python3 Start.py. Once the Python file is running, a GUI will appear. 
+The system opens using the Start.exe file.
  
 Clicking the “Open Audio File” button will open a file browser prompt that accepts mp3, flac, and wav files. After selecting your audio file, the audio file name will then be displayed on the UI, alongside a button that says “Perform Prediction”.
  

@@ -9,6 +9,7 @@ from applymodel import applyindivmodel
 from massapplymodel import massapplymodelfunc
 from tkinter import filedialog
 from tkinter import ttk
+from tkinter import ttk
 from PIL import Image, ImageTk
 from scipy.signal import spectrogram
 from sklearn.preprocessing import StandardScaler
@@ -219,19 +220,33 @@ if __name__ == "__main__":
     # Transforms audio file into a normalized log-spectrogram image
     def mp3_to_spectrogram(file_path, save_path=None):
         y, sr = librosa.load(file_path, sr=16000, duration=5.0)
+    # Transforms audio file into a normalized log-spectrogram image
+    def mp3_to_spectrogram(file_path, save_path=None):
+        y, sr = librosa.load(file_path, sr=16000, duration=5.0)
 
+        f, t, Zxx = spectrogram(
+            y, fs=sr, window='hamming', nperseg=int(sr * 0.108), noverlap=int(sr * 0.01)
+        )
         f, t, Zxx = spectrogram(
             y, fs=sr, window='hamming', nperseg=int(sr * 0.108), noverlap=int(sr * 0.01)
         )
 
         log_Zxx = np.log1p(np.abs(Zxx))
+        log_Zxx = np.log1p(np.abs(Zxx))
 
+        scaler = StandardScaler()
+        z_normalized_log_Zxx = scaler.fit_transform(log_Zxx.T).T
         scaler = StandardScaler()
         z_normalized_log_Zxx = scaler.fit_transform(log_Zxx.T).T
 
         max_db_value = 11.0
         z_normalized_log_Zxx = np.clip(z_normalized_log_Zxx, -np.inf, max_db_value)
+        max_db_value = 11.0
+        z_normalized_log_Zxx = np.clip(z_normalized_log_Zxx, -np.inf, max_db_value)
 
+        plt.figure(figsize=(8, 6))
+        plt.imshow(z_normalized_log_Zxx, aspect='auto', origin='lower', cmap='viridis', vmax=max_db_value)
+        plt.axis('off')
         plt.figure(figsize=(8, 6))
         plt.imshow(z_normalized_log_Zxx, aspect='auto', origin='lower', cmap='viridis', vmax=max_db_value)
         plt.axis('off')
@@ -241,11 +256,23 @@ if __name__ == "__main__":
             plt.close()
         else:
             plt.show()
+        if save_path:
+            plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
+            plt.close()
+        else:
+            plt.show()
 
     def open_image(image_path):
         original_image = Image.open(image_path)
         resized_image = original_image.resize((250, 250))
+    def open_image(image_path):
+        original_image = Image.open(image_path)
+        resized_image = original_image.resize((250, 250))
 
+        tk_image = ImageTk.PhotoImage(resized_image)
+        image_label.config(image=tk_image)
+        image_label.image = tk_image
+        root.geometry("750x340")
         tk_image = ImageTk.PhotoImage(resized_image)
         image_label.config(image=tk_image)
         image_label.image = tk_image
@@ -260,11 +287,25 @@ if __name__ == "__main__":
 
     output_folder = os.path.join(script_directory, r'Image')
     os.makedirs(output_folder, exist_ok=True)
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    output_csv_path = os.path.join(script_directory, 'mass_prediction_results.csv')
+    print(f"Script directory: {script_directory}")
+
+    sys.path.append(script_directory)
+    print(f"System path: {sys.path}")
+
+    output_folder = os.path.join(script_directory, r'Image')
+    os.makedirs(output_folder, exist_ok=True)
 
     def display_prediction():
         with open(output_file_path, 'r') as output_file:
             lines = output_file.readlines()
+    def display_prediction():
+        with open(output_file_path, 'r') as output_file:
+            lines = output_file.readlines()
 
+        predicted_class_line = lines[0].strip()
+        class_probabilities_line = lines[1].strip()
         predicted_class_line = lines[0].strip()
         class_probabilities_line = lines[1].strip()
 
@@ -273,7 +314,44 @@ if __name__ == "__main__":
         class_probabilities = [round(float(value) * 100, 2) for value in class_probabilities_str.strip("[]").split(",")]
         
         prediction_type = ""
+        predicted_class = int(predicted_class_line.split(":")[1].strip())
+        class_probabilities_str = class_probabilities_line.split(":")[1].strip()
+        class_probabilities = [round(float(value) * 100, 2) for value in class_probabilities_str.strip("[]").split(",")]
+        
+        prediction_type = ""
 
+        if predicted_class == 0:
+            type_prediction.config(text=f'The audio file is LEGITIMATE')
+        elif predicted_class != 0:
+            type_prediction.config(text=f'The audio file is MODIFIED')
+        
+        match predicted_class:
+            case 0:
+                method_prediction.config(text=f'Modification Type: Unmodified')
+                prediction_type = "Unmodified"
+            case 1:
+                method_prediction.config(text=f'Modification Type: Voice Synthesis')
+                prediction_type = "Synthesis"
+            case 2:
+                method_prediction.config(text=f'Modification Type: Voice Changer')
+                prediction_type = "Voice Changer"
+            case 3:
+                method_prediction.config(text=f'Modification Type: Voice Splicing')
+                prediction_type = "Voice Splicing"
+            
+        guess_probability.config(text=f'Confidence Level: {class_probabilities[predicted_class]}%')
+        
+        del_path = os.path.join(output_folder, filename[:-4] + "_spectrogram.png")
+
+        try:
+            os.remove(del_path)
+        except Exception as e:
+            print(f"Error deleting {del_path}: {e}")
+        
+        with open(history_file_path, "a") as history_file:
+            history_file.write(f"Filename: {filename}\n")
+            history_file.write(f"Type: {prediction_type}\n")
+            history_file.write(f"Confidence Level: {class_probabilities[predicted_class]}%\n\n")
         if predicted_class == 0:
             type_prediction.config(text=f'The audio file is LEGITIMATE')
         elif predicted_class != 0:
@@ -327,17 +405,47 @@ if __name__ == "__main__":
         history_window.title("Checking History")
         history_window.geometry("620x520")
         history_window.resizable(False, False)
+    def display_history():
+        def clear_history():
+            try:
+                with open(history_file_path, "r+") as history_file:
+                    history_file.truncate(0)
+                history_text.config(state=tk.NORMAL)
+                history_text.delete(1.0, tk.END)
+                history_text.insert(tk.END, "History cleared.")
+                history_text.config(state=tk.DISABLED)
+                
+            except FileNotFoundError:
+                history_text.config(state=tk.NORMAL)
+                history_text.delete(1.0, tk.END)
+                history_text.insert(tk.END, "No history found.")
+                history_text.config(state=tk.DISABLED)
+
+        history_window = tk.Toplevel(root)
+        history_window.title("Checking History")
+        history_window.geometry("620x520")
+        history_window.resizable(False, False)
 
         frame = tk.Frame(history_window)
         frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        frame = tk.Frame(history_window)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
+        history_text = tk.Text(frame, wrap=tk.WORD, font=("Arial", 10))
+        history_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         history_text = tk.Text(frame, wrap=tk.WORD, font=("Arial", 10))
         history_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         scroll_bar = tk.Scrollbar(frame, command=history_text.yview)
         scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
         history_text.config(yscrollcommand=scroll_bar.set)
+        scroll_bar = tk.Scrollbar(frame, command=history_text.yview)
+        scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
+        history_text.config(yscrollcommand=scroll_bar.set)
 
+        try:
+            with open(history_file_path, "r") as history_file:
+                history_data = history_file.read()
         try:
             with open(history_file_path, "r") as history_file:
                 history_data = history_file.read()
@@ -348,7 +456,14 @@ if __name__ == "__main__":
                 history_text.insert(tk.END, "No history found.")
         except FileNotFoundError:
             history_text.insert(tk.END, "No history found.")
+            if history_data:
+                history_text.insert(tk.END, history_data)
+            else:
+                history_text.insert(tk.END, "No history found.")
+        except FileNotFoundError:
+            history_text.insert(tk.END, "No history found.")
 
+        history_text.config(state=tk.DISABLED)
         history_text.config(state=tk.DISABLED)
 
         clear_button = tk.Button(history_window, text="Clear History", command=clear_history)
@@ -482,7 +597,18 @@ if __name__ == "__main__":
     root.resizable(False, False)
 
     history_label = tk.Label(root, text="", wraplength=600, justify="left")
+    history_label = tk.Label(root, text="", wraplength=600, justify="left")
 
+    audio_button = tk.Button(root, text="Open Audio File", command=open_file_dialog, width=20, height=1)
+    folder_button = tk.Button(root, text="Mass Prediction", command=open_folder_dialog, width=20, height=1)
+    history_button = tk.Button(root, text="View Checking History", command=display_history, width=20, height=1)
+    mass_history_button = tk.Button(root, text="Review Mass Prediction", command=redisplay_predictions, width=20, height=1)
+    transform_button = tk.Button(root, text="Perform Prediction", command=generate_spectrogram, width=20, height=1)
+    mass_transform_button = tk.Button(root, text="Perform Mass Prediction", command=mass_generate_spectrogram, width=20, height=1)
+    api_button = tk.Button(root, text="API Settings", command=api_settings, width=20, height=1)
+    documentation_button = tk.Button(root, text="View Documentation", command=display_documentation, width=20, height=1)
+    return_button = tk.Button(root, text="Return", command=show_initial_menu, width=20, height=1)
+    
     audio_button = tk.Button(root, text="Open Audio File", command=open_file_dialog, width=20, height=1)
     folder_button = tk.Button(root, text="Mass Prediction", command=open_folder_dialog, width=20, height=1)
     history_button = tk.Button(root, text="View Checking History", command=display_history, width=20, height=1)
@@ -506,7 +632,24 @@ if __name__ == "__main__":
     api_button.grid(row=2, column=0, padx=10, pady=5)
     documentation_button.grid(row=3, column=0, padx=10, pady=5)
     transform_button.grid_remove()
+    file_name = tk.Label(root, text="")
+    image_label = tk.Label(root)
+    guess_probability = tk.Label(root, text="")
+    type_prediction = tk.Label(root, text="")
+    method_prediction = tk.Label(root, text="")
 
+    
+    audio_button.grid(row=0, column=0, padx=10, pady=5)
+    history_button.grid(row=1, column=0, padx=10, pady=5)
+    api_button.grid(row=2, column=0, padx=10, pady=5)
+    documentation_button.grid(row=3, column=0, padx=10, pady=5)
+    transform_button.grid_remove()
+
+    file_name.place(x=170, y=7)
+    image_label.place(x=180, y=45)
+    guess_probability.place(x=475, y=65)
+    method_prediction.place(x=475, y=85)
+    type_prediction.place(x=475, y=45)
     file_name.place(x=170, y=7)
     image_label.place(x=180, y=45)
     guess_probability.place(x=475, y=65)
@@ -516,13 +659,22 @@ if __name__ == "__main__":
     root.columnconfigure(0, minsize=0)
     root.columnconfigure(1, minsize=225)
     root.columnconfigure(2, minsize=0)
+    root.columnconfigure(0, minsize=0)
+    root.columnconfigure(1, minsize=225)
+    root.columnconfigure(2, minsize=0)
 
+    output_file_path = os.path.join(script_directory, "prediction_results.txt")
+    output_folder_path = os.path.join(output_folder, 'Mass')
     output_file_path = os.path.join(script_directory, "prediction_results.txt")
     output_folder_path = os.path.join(output_folder, 'Mass')
 
     history_directory = os.path.join(script_directory, 'History')
     os.makedirs(history_directory, exist_ok=True)
+    history_directory = os.path.join(script_directory, 'History')
+    os.makedirs(history_directory, exist_ok=True)
 
     history_file_path = os.path.join(history_directory, 'history.txt')
+    history_file_path = os.path.join(history_directory, 'history.txt')
 
+    root.mainloop()
     root.mainloop()

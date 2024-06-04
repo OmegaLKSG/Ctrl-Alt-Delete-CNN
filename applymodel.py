@@ -2,6 +2,7 @@ import torch
 from torchvision import transforms
 from PIL import Image
 from ThesisModeCNN import SimpleCNN
+from ThesisModeCNN import SimpleCNN
 import os
 import sys
 

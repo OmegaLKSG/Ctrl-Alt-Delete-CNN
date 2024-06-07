@@ -3,8 +3,6 @@ import librosa
 import numpy as np
 import matplotlib.pyplot as plt
 import tkinter as tk
-import applymodel
-import massapplymodel
 from applymodel import applyindivmodel
 from massapplymodel import massapplymodelfunc
 from tkinter import filedialog
@@ -14,6 +12,7 @@ from scipy.signal import spectrogram
 from sklearn.preprocessing import StandardScaler
 import sys
 import csv
+import math
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -141,7 +140,7 @@ if __name__ == "__main__":
                     continue
                 float_values = [float(value) for value in row[2:6]]
                 max_value = max(float_values) * 100
-                formatted_max_value = "{:.4f}".format(max_value)
+                #formatted_max_value = "{:.4f}".format(max_value)
 
                 last_insert = row[:2]
                 
@@ -154,7 +153,13 @@ if __name__ == "__main__":
                 elif last_insert[1] == '0':
                     last_insert[1] = 'Unmodified'
                     
-                last_insert.append(formatted_max_value)
+                e = math.e
+                k = 10
+                x123 = max_value * 0.01
+                funnum = (1/(1+e**(-k*(x123-0.3))))*100
+                funnum = "{:.4f}".format(funnum)
+                last_insert.append(funnum)
+                #last_insert.append(formatted_max_value)
                 tree.insert('', 'end', values=last_insert)
 
         return tree
@@ -218,6 +223,8 @@ if __name__ == "__main__":
 
     # Transforms audio file into a normalized log-spectrogram image
     def mp3_to_spectrogram(file_path, save_path=None):
+        #if file_path.length() > 5000:
+        #    pass
         y, sr = librosa.load(file_path, sr=16000, duration=5.0)
 
         f, t, Zxx = spectrogram(
@@ -293,10 +300,28 @@ if __name__ == "__main__":
                 method_prediction.config(text=f'Modification Type: Voice Splicing')
                 prediction_type = "Voice Splicing"
             
-        guess_probability.config(text=f'Confidence Level: {class_probabilities[predicted_class]}%')
+            
+        e = math.e
+        k = 10
+        x123 = class_probabilities[predicted_class] * 0.01
+        funnum = (1/(1+e**(-k*(x123-0.3))))*100
+        guess_probability.config(text=f'Confidence Level: {funnum}%')
+        #guess_probability.config(text=f'Confidence Level: {class_probabilities[predicted_class]}%')
+        
+        alternate_probability0.place(x=475, y=125)
+        alternate_probability1.place(x=475, y=145)
+        alternate_probability2.place(x=475, y=165)
+        alternate_probability3.place(x=475, y=185)
+        
+        """
+        alt_type = ["Unmodified","Synthesis","Voice Changer","Voice Splicing"]
+        alternate_probability0.config(text=f'{alt_type[0]} Probability: {class_probabilities[0]}%')
+        alternate_probability1.config(text=f'{alt_type[1]} Probability: {class_probabilities[1]}%')
+        alternate_probability2.config(text=f'{alt_type[2]} Probability: {class_probabilities[2]}%')
+        alternate_probability3.config(text=f'{alt_type[3]} Probability: {class_probabilities[3]}%')
+        """
         
         del_path = os.path.join(output_folder, filename[:-4] + "_spectrogram.png")
-
         try:
             os.remove(del_path)
         except Exception as e:
@@ -305,7 +330,14 @@ if __name__ == "__main__":
         with open(history_file_path, "a") as history_file:
             history_file.write(f"Filename: {filename}\n")
             history_file.write(f"Type: {prediction_type}\n")
-            history_file.write(f"Confidence Level: {class_probabilities[predicted_class]}%\n\n")
+            
+            e = math.e
+            k = 10
+            x123 = class_probabilities[predicted_class] * 0.01
+            funnum = (1/(1+e**(-k*(x123-0.3))))*100
+            history_file.write(f"Confidence Level: {funnum}%\n\n")
+            #history_file.write(f"Confidence Level: {class_probabilities[predicted_class]}%\n\n")
+            
 
     def display_history():
         def clear_history():
@@ -469,6 +501,10 @@ if __name__ == "__main__":
         file_name.place(x=170, y=7)
         image_label.place(x=180, y=45)
         guess_probability.place(x=475, y=65)
+        alternate_probability0.place_forget()
+        alternate_probability1.place_forget()
+        alternate_probability2.place_forget()
+        alternate_probability3.place_forget()
         method_prediction.place(x=475, y=85)
         type_prediction.place(x=475, y=45)
     
@@ -497,6 +533,11 @@ if __name__ == "__main__":
     file_name = tk.Label(root, text="")
     image_label = tk.Label(root)
     guess_probability = tk.Label(root, text="")
+    alternate_probability0 = tk.Label(root, text="")
+    alternate_probability1 = tk.Label(root, text="")
+    alternate_probability2 = tk.Label(root, text="")
+    alternate_probability3 = tk.Label(root, text="")
+    
     type_prediction = tk.Label(root, text="")
     method_prediction = tk.Label(root, text="")
 
@@ -510,6 +551,10 @@ if __name__ == "__main__":
     file_name.place(x=170, y=7)
     image_label.place(x=180, y=45)
     guess_probability.place(x=475, y=65)
+    alternate_probability0.place(x=475, y=125)
+    alternate_probability1.place(x=475, y=145)
+    alternate_probability2.place(x=475, y=165)
+    alternate_probability3.place(x=475, y=185)
     method_prediction.place(x=475, y=85)
     type_prediction.place(x=475, y=45)
 

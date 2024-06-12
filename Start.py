@@ -300,7 +300,7 @@ if __name__ == "__main__":
                 method_prediction.config(text=f'Modification Type: Voice Splicing')
                 prediction_type = "Voice Splicing"
             
-            
+        # This is the probability of the predicted class run through a Sigmoid S Curve function that makes the numbers more readable.
         e = math.e
         k = 10
         x123 = class_probabilities[predicted_class] * 0.01
@@ -314,11 +314,20 @@ if __name__ == "__main__":
         alternate_probability3.place(x=475, y=185)
         
         """
+        x0 = class_probabilities[0] * 0.01
+        x1 = class_probabilities[1] * 0.01
+        x2 = class_probabilities[2] * 0.01
+        x3 = class_probabilities[3] * 0.01
+        funnum0 = (1/(1+e**(-k*(x0-0.3))))*100
+        funnum1 = (1/(1+e**(-k*(x1-0.3))))*100
+        funnum2 = (1/(1+e**(-k*(x2-0.3))))*100
+        funnum3 = (1/(1+e**(-k*(x3-0.3))))*100
+        
         alt_type = ["Unmodified","Synthesis","Voice Changer","Voice Splicing"]
-        alternate_probability0.config(text=f'{alt_type[0]} Probability: {class_probabilities[0]}%')
-        alternate_probability1.config(text=f'{alt_type[1]} Probability: {class_probabilities[1]}%')
-        alternate_probability2.config(text=f'{alt_type[2]} Probability: {class_probabilities[2]}%')
-        alternate_probability3.config(text=f'{alt_type[3]} Probability: {class_probabilities[3]}%')
+        alternate_probability0.config(text=f'{alt_type[0]} Probability: {funnum0}%')
+        alternate_probability1.config(text=f'{alt_type[1]} Probability: {funnum1}%')
+        alternate_probability2.config(text=f'{alt_type[2]} Probability: {funnum2}%')
+        alternate_probability3.config(text=f'{alt_type[3]} Probability: {funnum3}%')
         """
         
         del_path = os.path.join(output_folder, filename[:-4] + "_spectrogram.png")

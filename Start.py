@@ -13,6 +13,13 @@ customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "gre
 
 VALID_EXTENSIONS = ('.mp3', '.wav', '.flac')
 
+script_directory = os.path.dirname(os.path.abspath(__file__))
+output_folder = os.path.join(script_directory, r'Image')
+results_txt_filepath = f'{script_directory}/prediction_results.txt'
+results_csv_filepath = f'{script_directory}/solo_history.csv'
+output_folder_path = ''
+output_csv_path = ''
+
 class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
@@ -22,9 +29,9 @@ class App(customtkinter.CTk):
         self.mass_foldername = None
         self.mass_folder_path = None
         
-        self.dark_icon_path = os.path.join(os.path.dirname(__file__), "mimicallogo_white.ico")
-        self.light_icon_path = os.path.join(os.path.dirname(__file__), "mimicallogo.ico")
-        
+        self.icon_folder_path = f'{script_directory}\icons'
+        self.dark_icon_path = f'{script_directory}\icons\mimicallogo_white.ico'
+        self.light_icon_path = f'{script_directory}\icons\mimicallogo.ico'
         # configure window
         self.iconbitmap(self.dark_icon_path)
         self.title("Mimical - Detect Fake Audio")
@@ -115,8 +122,8 @@ class App(customtkinter.CTk):
         self.audio_slider.set(0)
         self.audio_slider.grid(row=2, column=0, padx=(20, 10), pady=(10, 10), sticky="ew")
         
-        self.play_button_img = os.path.join(script_directory, "play_button.png") 
-        self.pause_button_img = os.path.join(script_directory, "pause_button.png") 
+        self.play_button_img = os.path.join(self.icon_folder_path, "play_button.png") 
+        self.pause_button_img = os.path.join(self.icon_folder_path, "pause_button.png") 
         self.play_image = customtkinter.CTkImage(img.open(self.play_button_img), size=(20, 20))
         self.pause_image = customtkinter.CTkImage(img.open(self.pause_button_img), size=(20, 20))
         
@@ -248,15 +255,14 @@ Click "View Documentation to see full instructions.\n\n""")
         self.selection_label_tab_1.configure(text=f'Selected folder: {(self.mass_foldername)}')
         
     def sidebar_button_3_event(self):
+        header = ['FilePath', 'PredictedClass'] + [f'Class_{i}_Prob' for i in range(4)]
+        file_exists = os.path.exists(results_csv_filepath)
+        with open(results_csv_filepath, 'a', newline='', encoding="utf-8") as csvfile:
+            csv_writer = csv.writer(csvfile)
+            if not file_exists:
+                csv_writer.writerow(header)
         if create_table_solo(self.result_tabview.tab("Solo Results"), results_csv_filepath):
             self.text_label_tab1.forget()
-
-script_directory = os.path.dirname(os.path.abspath(__file__))
-output_folder = os.path.join(script_directory, r'Image')
-results_txt_filepath = f'{script_directory}/prediction_results.txt'
-results_csv_filepath = f'{script_directory}/solo_history.csv'
-output_folder_path = ''
-output_csv_path = ''
 
 if __name__ == "__main__":
     app = App()

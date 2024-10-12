@@ -1,582 +1,284 @@
+import tkinter
 import os
-import librosa
-import numpy as np
-import matplotlib.pyplot as plt
-import tkinter as tk
-from applymodel import applyindivmodel
-from massapplymodel import massapplymodelfunc
-from tkinter import filedialog
-from tkinter import ttk
-from PIL import Image, ImageTk
-from scipy.signal import spectrogram
-from sklearn.preprocessing import StandardScaler
-import sys
-import csv
-import math
+import tkinter.messagebox
+import customtkinter
+from PIL import Image as img  # Import for handling images
+import threading
+
+from funcs import *
+from audioplayer import *
+
+customtkinter.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
+customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
+
+VALID_EXTENSIONS = ('.mp3', '.wav', '.flac')
+
+class App(customtkinter.CTk):
+    def __init__(self):
+        super().__init__()
+
+        # setting values
+        self.solo_filename = None
+        self.mass_foldername = None
+        self.mass_folder_path = None
+        
+        self.dark_icon_path = os.path.join(os.path.dirname(__file__), "mimicallogo_white.ico")
+        self.light_icon_path = os.path.join(os.path.dirname(__file__), "mimicallogo.ico")
+        
+        # configure window
+        self.iconbitmap(self.dark_icon_path)
+        self.title("Mimical - Detect Fake Audio")
+        self.geometry(f"{1100}x{580}")
+
+        # configure grid layout (4x4)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
+        self.grid_rowconfigure((0, 1, 2), weight=1)
+
+        # create sidebar frame with widgets
+        self.sidebar_frame = customtkinter.CTkFrame(self, width=140, corner_radius=0)
+        self.sidebar_frame.grid(row=0, column=0, rowspan=4, sticky="nsew")
+        self.sidebar_frame.grid_rowconfigure(4, weight=1)
+        self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="Mimical", font=customtkinter.CTkFont(size=20, weight="bold"))
+        self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
+        
+        self.sidebar_button_1 = customtkinter.CTkButton(self.sidebar_frame, command=self.sidebar_button_1_event)
+        self.sidebar_button_1.grid(row=1, column=0, padx=20, pady=10)
+        self.sidebar_button_2 = customtkinter.CTkButton(self.sidebar_frame, command=self.sidebar_button_2_event)
+        self.sidebar_button_2.grid(row=2, column=0, padx=20, pady=10)
+        self.sidebar_button_3 = customtkinter.CTkButton(self.sidebar_frame, command=self.sidebar_button_3_event)
+        self.sidebar_button_3.grid(row=3, column=0, padx=20, pady=10)
+        
+        self.appearance_mode_label = customtkinter.CTkLabel(self.sidebar_frame, text="Appearance Mode:", anchor="w")
+        self.appearance_mode_label.grid(row=5, column=0, padx=20, pady=(10, 0))
+        self.appearance_mode_optionemenu = customtkinter.CTkOptionMenu(self.sidebar_frame, values=["Light", "Dark", "System"],
+                                                                       command=self.change_appearance_mode_event)
+        self.appearance_mode_optionemenu.grid(row=6, column=0, padx=20, pady=(10, 10))
+
+        # create main entry and button
+        self.footer = customtkinter.CTkFrame(self)
+        self.footer.grid(row=3, column=1, columnspan=2, padx=(20, 10), pady=(10, 0), sticky="nsew")
+        self.loadingBar = customtkinter.CTkProgressBar(self.footer)
+        self.loadingBar.grid(row=0, column=0, padx=(20, 10), pady=(10, 10), sticky="ew")
+        self.loadingStatusLabel = customtkinter.CTkLabel(self.footer)
+        self.loadingStatusLabel.grid(row=0, column=1, padx=(20, 10), pady=(10, 10), sticky="ew")
+
+        # create textbox
+        self.textbox = customtkinter.CTkTextbox(self, width=250)
+        self.textbox.grid(row=0, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        """
+        self.image_path = os.path.join(os.path.dirname(__file__), "spectrogram.png")  # Adjust the path if necessary
+        self.photo = customtkinter.CTkImage(PIL.Image.open(self.image_path), size=(400, 320))
+        self.image_label = customtkinter.CTkLabel(self, text='', image=self.photo)
+        self.image_label.grid(row=0, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        """
+        # create tabview
+        self.tabview = customtkinter.CTkTabview(self, width=250)
+        self.tabview.grid(row=0, column=2, columnspan=1, padx=(20, 10), pady=(20, 0), sticky="nsew")
+        self.tabview.add("Control")
+        self.tabview.add("Details")
+        self.tabview.add("Tab 3")
+        
+        self.tabview.tab("Control").grid_columnconfigure(0, weight=1, minsize=150)
+        self.tabview.tab("Control").grid_columnconfigure(1, weight=1, minsize=150)
+        self.tabview.tab("Details").grid_columnconfigure(0, weight=1, minsize=300)
+        self.tabview.tab("Tab 3").grid_columnconfigure(0, weight=1, minsize=300)
+        #self.tabview.tab("Tab 3").configure(state='disabled')
+
+        self.selection_label_tab_1 = customtkinter.CTkLabel(self.tabview.tab("Control"), text="Select a file or folder to start audio checking")
+        self.selection_label_tab_1.grid(row=0, column=0, padx=0, pady=20, sticky="ew", columnspan=2)
+        self.perform_prediction_button = customtkinter.CTkButton(self.tabview.tab("Control"), text="Perform Predictions", command=self.perform_prediction, state="disabled", fg_color="#cc7a00", hover_color="#ab4d00")
+        self.perform_prediction_button.grid(row=2, column=0, padx=20, pady=(10, 10), sticky="nsew")
+        self.perform_massprediction_button = customtkinter.CTkButton(self.tabview.tab("Control"), text="Perform Mass Predictions", command=self.perform_mass_prediction, state="normal", fg_color="#cc7a00", hover_color="#ab4d00")
+        self.detailed_history_button = customtkinter.CTkButton(self.tabview.tab("Control"), text="Detailed History", command=self.perform_prediction, state="disabled")
+        self.detailed_history_button.grid(row=2, column=1, padx=20, pady=(10, 10), sticky="nsew")
+        self.result_directory_button = customtkinter.CTkButton(self.tabview.tab("Control"), text="Open CSV File Directory", command=self.perform_prediction, state="disabled")
+        self.result_directory_button.grid(row=3, column=0, padx=20, pady=(10, 10), sticky="nsew")
+        self.image_directory_button = customtkinter.CTkButton(self.tabview.tab("Control"), text="Open Image Directory", command=self.perform_prediction, state="disabled")
+        self.image_directory_button.grid(row=3, column=1, padx=20, pady=(10, 10), sticky="nsew")
+        
+        self.label_tab_2 = customtkinter.CTkLabel(self.tabview.tab("Details"), text="CTkLabel on Tab 2")
+        self.label_tab_2.grid(row=0, column=0, padx=20, pady=20)
+        
+        self.label_tab_3 = customtkinter.CTkLabel(self.tabview.tab("Tab 3"), text="CTkLabel on Tab 3")
+        self.label_tab_3.grid(row=0, column=0, padx=20, pady=20)
+
+        # create slider and progressbar frame
+        self.slider_progressbar_frame = customtkinter.CTkFrame(self, fg_color="transparent")
+        self.slider_progressbar_frame.grid(row=1, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.slider_progressbar_frame.grid_columnconfigure(0, weight=1)
+        self.slider_progressbar_frame.grid_rowconfigure(4, weight=1)
+        self.audio_label = customtkinter.CTkLabel(self.slider_progressbar_frame, text="No Audio Selected")
+        self.audio_label.grid(row=0, column=0, padx=(0, 0), pady=(10, 5), sticky="ew")
+
+        self.audio_slider = customtkinter.CTkSlider(self.slider_progressbar_frame, from_=0, to=1)
+        self.audio_slider.set(0)
+        self.audio_slider.grid(row=2, column=0, padx=(20, 10), pady=(10, 10), sticky="ew")
+        
+        self.play_button_img = os.path.join(script_directory, "play_button.png") 
+        self.pause_button_img = os.path.join(script_directory, "pause_button.png") 
+        self.play_image = customtkinter.CTkImage(img.open(self.play_button_img), size=(20, 20))
+        self.pause_image = customtkinter.CTkImage(img.open(self.pause_button_img), size=(20, 20))
+        
+        self.play_button = customtkinter.CTkButton(self.slider_progressbar_frame, text="Play", command=lambda: play_music(self.audio_slider))
+        self.play_button.grid(row=3, column=0, padx=5, sticky="ew")
+        self.play_button.configure(state='disabled', image=self.play_image)
+        
+        self.volume_slider = customtkinter.CTkSlider(self.slider_progressbar_frame, orientation="vertical", from_=0.0, to=1.0, height=100, command=set_volume)
+        self.volume_slider.grid(row=2, column=1, rowspan=1, padx=(10, 10), pady=(10, 10), sticky="ns")
+        self.volume_label = customtkinter.CTkLabel(self.slider_progressbar_frame, text="Volume")
+        self.volume_label.grid(row=3, column=1, padx=(10, 10), pady=(10, 10), sticky="ew")
+
+        # create scrollable frame
+        """self.scrollable_frame = customtkinter.CTkScrollableFrame(self, label_text="Results")
+        self.scrollable_frame.grid(row=1, column=2, padx=(20, 10), pady=(20, 0), sticky="nsew")
+        self.scrollable_frame.grid_columnconfigure(0, weight=1)"""
+        
+        self.result_tabview = customtkinter.CTkTabview(self, width=250)
+        self.result_tabview.grid(row=1, column=2, columnspan=1, padx=(20, 10), pady=(20, 0), sticky="nsew")
+        self.result_tabview.add("Solo Results")
+        self.result_tabview.add("Mass Results")
+        
+        self.result_tabview.tab("Solo Results").grid_columnconfigure(0, weight=1, minsize=300)
+        self.result_tabview.tab("Mass Results").grid_columnconfigure(0, weight=1, minsize=300)
+        
+        #self.selection_label_tab_1 = customtkinter.CTkLabel(self.tabview.tab("Control"), text="Select a file or folder to start audio checking")
+        #self.selection_label_tab_1.grid(row=0, column=0, padx=0, pady=20, sticky="ew")
+
+        #self.label_tab_2 = customtkinter.CTkLabel(self.tabview.tab("Details"), text="CTkLabel on Tab 2")
+        #self.label_tab_2.grid(row=0, column=0, padx=20, pady=20)
+        
+        """self.result_frame = customtkinter.CTkFrame(self)
+        self.result_frame.grid(row=1, column=2, padx=(20, 10), pady=(20, 0), sticky="nsew")
+        self.result_frame.grid_columnconfigure(0, weight=1)"""
+        
+        self.text_label_tab1 = customtkinter.CTkLabel(self.result_tabview.tab("Solo Results"))
+        self.text_label_tab1.grid(row=0, column=0, padx=(20, 10), pady=(0, 0), sticky="ew")
+        self.text_label_tab1.configure(text='No History Yet.')
+        
+        self.text_label_tab2 = customtkinter.CTkLabel(self.result_tabview.tab("Mass Results"))
+        self.text_label_tab2.grid(row=0, column=0, padx=(20, 10), pady=(0, 0), sticky="ew")
+        self.text_label_tab2.configure(text='No History Yet.')
+        
+        self.sidebar_button_3_event()
+
+        # set default values
+        self.textbox.insert("0.0", "Mimical\n\n"+"""Press "Solo Audio Checking" or "Mass Audio Checking" to start
+You can see previous history in the bottom right.
+Click "View Documentation to see full instructions.\n\n""")
+        self.textbox.configure(state='disabled')
+        self.sidebar_button_1.configure(state="normal", text="Sole Audio Checking")
+        self.sidebar_button_2.configure(state="normal", text="Mass Audio Checking")
+        self.sidebar_button_3.configure(state="normal", text="View Previous History")
+        self.appearance_mode_optionemenu.set("Dark")
+
+    def change_appearance_mode_event(self, new_appearance_mode: str):
+        customtkinter.set_appearance_mode(new_appearance_mode)
+        current_mode = customtkinter.get_appearance_mode()
+        if current_mode == "Dark":
+            self.iconbitmap(self.dark_icon_path)
+        else:
+            self.iconbitmap(self.light_icon_path)
+
+    """def change_scaling_event(self, new_scaling: str):
+        new_scaling_float = int(new_scaling.replace("%", "")) / 100
+        customtkinter.set_widget_scaling(new_scaling_float)"""
+
+    def perform_prediction(self):
+        #event = threading.Event()
+        spectrogram_file_path = generate_spectrogram()
+        #event.wait()
+        
+        print(spectrogram_file_path)
+        self.spectrogram_image_path = os.path.join(os.path.dirname(__file__), spectrogram_file_path)
+        self.photo = customtkinter.CTkImage(img.open(self.spectrogram_image_path), size=(400, 320))
+        self.image_label = customtkinter.CTkLabel(self, text='', image=self.photo)
+        self.image_label.grid(row=0, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.sidebar_button_3_event()
+        self.tabview.set("Details")
+        
+    def perform_mass_prediction(self):
+        #event = threading.Event()
+        mass_csv_output_path = mass_generate_spectrogram(self.mass_folder_path)
+        #event.wait()
+        if create_table_mass(self.result_tabview.tab("Mass Results"), mass_csv_output_path):
+            self.text_label_tab2.forget()
+        """print(spectrogram_folder_path)
+        self.spectrogram_image_path = os.path.join(os.path.dirname(__file__), spectrogram_folder_path)
+        self.photo = customtkinter.CTkImage(img.open(self.spectrogram_image_path), size=(400, 320))
+        self.image_label = customtkinter.CTkLabel(self, text='', image=self.photo)
+        self.image_label.grid(row=0, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")"""
+        self.sidebar_button_3_event()
+        self.tabview.set("Details")
+
+    def delete_perform_button(self):
+        self.perform_prediction_button.grid_remove()
+        self.perform_massprediction_button.grid_remove()
+    
+    def sidebar_button_1_event(self):
+        self.solo_filename = open_file_dialog()
+        self.delete_perform_button()
+        self.perform_prediction_button.grid(row=2, column=0, padx=20, pady=(10, 10))
+        if not self.solo_filename:
+            self.perform_prediction_button.configure(state='disabled')
+            self.selection_label_tab_1.configure(text=f'No File Selected')
+            self.audio_label.configure(text=f'No File Selected')
+            return
+        else:
+            self.perform_prediction_button.configure(state='normal')
+            self.selection_label_tab_1.configure(text=f'Selected file: {os.path.basename(self.solo_filename)}')
+            song_length = load_song(self.solo_filename)
+            self.audio_slider = customtkinter.CTkSlider(self.slider_progressbar_frame, from_=0, to=song_length, command=lambda x: slide(x, self.audio_slider))
+            self.audio_slider.grid(row=2, column=0, padx=(20, 10), pady=(10, 10), sticky="ew")
+            self.audio_slider.set(0)
+            self.audio_label.configure(text=f'Playing: {os.path.basename(self.solo_filename)}')
+            self.play_button.configure(state='normal')
+            
+    def sidebar_button_2_event(self):
+        print("Mass Audio Checking click")
+        self.mass_foldername, self.mass_folder_path = open_folder_dialog()
+        self.delete_perform_button()
+        self.perform_massprediction_button.grid(row=2, column=0, padx=20, pady=(10, 10), sticky="nsew")
+        if not self.mass_foldername:
+            self.perform_massprediction_button.configure(state='disabled')
+            self.selection_label_tab_1.configure(text=f'No Folder Selected')
+            return
+        else:
+            self.perform_massprediction_button.configure(state='normal')
+        self.selection_label_tab_1.configure(text=f'Selected folder: {(self.mass_foldername)}')
+        
+    def sidebar_button_3_event(self):
+        if create_table_solo(self.result_tabview.tab("Solo Results"), results_csv_filepath):
+            self.text_label_tab1.forget()
+
+script_directory = os.path.dirname(os.path.abspath(__file__))
+output_folder = os.path.join(script_directory, r'Image')
+results_txt_filepath = f'{script_directory}/prediction_results.txt'
+results_csv_filepath = f'{script_directory}/solo_history.csv'
+output_folder_path = ''
+output_csv_path = ''
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    
-    def open_file_dialog():
-        global file_path, filename
-        file_path = filedialog.askopenfilename(
-            title="Select Audio File",
-            filetypes=[
-                ("Audio files", "*.mp3;*.wav;*.flac"),
-                ("MP3 files", "*.mp3"),
-                ("WAV files", "*.wav"),
-                ("FLAC files", "*.flac")
-            ]
-        )
-        if file_path:
-            reset_prediction_display()
-            transform_button.grid(row=1, column=1, padx=10, pady=5)
-            filename = os.path.basename(file_path)
-            file_name.config(text=f"Selected Audio: {filename}")
-
-    def reset_prediction_display():
-        image_label.config(image='')
-        guess_probability.config(text='')
-        type_prediction.config(text='')
-        method_prediction.config(text='')
-        
-    def open_folder_dialog():
-        global folder_path, foldername
-        folder_path = filedialog.askdirectory(
-            title="Select Folder"
-        )
-        if folder_path:
-            reset_prediction_display()
-            mass_transform_button.grid(row=1, column=1, padx=10, pady=5)
-            foldername = os.path.basename(folder_path)
-            file_name.config(text=f"Selected Folder: {foldername}")
-
-    def mass_generate_spectrogram():    
-        if not folder_path:
-            file_name.config(text="No folder selected.")
-            return
-        output_folder_path = os.path.join(output_folder, 'Mass')
-        os.makedirs(output_folder_path, exist_ok=True)
-
-        for filename in os.listdir(folder_path):
-            file_path = os.path.join(folder_path, filename)
-            if os.path.isfile(file_path):
-                try:
-                    y, sr = librosa.load(file_path, sr=16000, duration=5.0)
-
-                    # Compute the short-time Fourier transform (STFT)
-                    f, t, Zxx = spectrogram(
-                        y, fs=sr, window='hamming', nperseg=int(sr * 0.108), noverlap=int(sr * 0.01)
-                    )
-
-                    log_Zxx = np.log1p(np.abs(Zxx))
-
-                    scaler = StandardScaler()
-                    z_normalized_log_Zxx = scaler.fit_transform(log_Zxx.T).T
-
-                    max_db_value = 11.0
-                    z_normalized_log_Zxx = np.clip(z_normalized_log_Zxx, -np.inf, max_db_value)
-
-                    num_segments = int(np.ceil(y.shape[0] / (sr * 5.0)))
-
-                    for i in range(num_segments):
-                        start_time = i * 5.0
-                        end_time = min((i + 1) * 5.0, y.shape[0] / sr)
-
-                        start_index = int(start_time * sr)
-                        end_index = int(end_time * sr)
-
-                        plt.figure(figsize=(8, 6))
-                        plt.imshow(z_normalized_log_Zxx[:, start_index:end_index], aspect='auto', origin='lower', cmap='viridis', vmax=max_db_value)
-                        plt.axis('off')
-                        
-                        segment_output_path = os.path.join(output_folder_path, f"{os.path.splitext(filename)[0]}_segment_{i}_spectrogram.png")
-                        
-                        plt.savefig(segment_output_path, bbox_inches='tight', pad_inches=0)
-                        plt.close()
-                except Exception as e:
-                    print(f"Error processing {file_path}: {e}")
-
-        classify_and_save_predictions_to_csv()
-
-    def classify_and_save_predictions_to_csv():
-
-        #mass_applymodel_path = os.path.join(script_directory, "massapplymodel.py")
-        mass_applymodel_path = os.path.join(script_directory, "massapplymodel.py")
-        massapplyoutputcsv = os.path.join(script_directory, "mass_prediction_results.csv")
-        
-        if not os.path.exists(mass_applymodel_path):
-            file_name.config(text="massapplymodel.py not found.")
-            return
-
-        #result = subprocess.run(["python", mass_applymodel_path, output_folder_path], capture_output=True, text=True)
-        result = massapplymodelfunc(output_folder_path, massapplyoutputcsv)
-        
-        print("Type: ", str(type(result)))
-        print(result)
-        
-        display_predictions_csv(output_csv_path, output_folder_path)
-        file_name.config(text=f"Prediction results have been printed to {output_csv_path}.")
-
-    def create_treeview(csv_window, mass_output_file_path):
-        frame = tk.Frame(csv_window)
-        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        tree = ttk.Treeview(frame, columns=('Filename', 'Type', 'Confidence Level'), show='headings')
-        tree.heading('Filename', text='Filename')
-        tree.heading('Type', text='Type')
-        tree.heading('Confidence Level', text='Confidence Level')
-
-        vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
-        vsb.pack(side='right', fill='y')
-        tree.configure(yscrollcommand=vsb.set)
-        tree.pack(fill=tk.BOTH, expand=True)
-
-        with open(mass_output_file_path, mode='r') as csv_file:
-            csv_reader = csv.reader(csv_file)
-            next(csv_reader, None) 
-            for row in csv_reader:
-                if not any(row):
-                    continue
-                float_values = [float(value) for value in row[2:6]]
-                max_value = max(float_values) * 100
-                #formatted_max_value = "{:.4f}".format(max_value)
-
-                last_insert = row[:2]
-                
-                if last_insert[1] == '1':
-                    last_insert[1] = 'Voice Synthesized'
-                elif last_insert[1] == '2':
-                    last_insert[1] = 'Voice Changed'
-                elif last_insert[1] == '3':
-                    last_insert[1] = 'Voice Spliced'
-                elif last_insert[1] == '0':
-                    last_insert[1] = 'Unmodified'
-                    
-                e = math.e
-                k = 10
-                x123 = max_value * 0.01
-                funnum = (1/(1+e**(-k*(x123-0.3))))*100
-                funnum = "{:.4f}".format(funnum)
-                last_insert.append(funnum)
-                #last_insert.append(formatted_max_value)
-                tree.insert('', 'end', values=last_insert)
-
-        return tree
-
-    def display_predictions_csv(mass_output_file_path, output_folder_path):
-        def on_window_close():
-            combined_command(csv_window, output_folder_path)
-
-        csv_window = tk.Toplevel(root)
-        csv_window.title("Predictions")
-        csv_window.geometry("1100x500")
-        csv_window.resizable(False, False)
-        csv_window.protocol("WM_DELETE_WINDOW", on_window_close)
-
-        tree = create_treeview(csv_window, mass_output_file_path)
-
-        return_button = tk.Button(csv_window, text="Close", command=lambda: combined_command(csv_window, output_folder_path))
-        return_button.pack(side=tk.BOTTOM, anchor='w', padx=10, pady=10)
-        mass_history_button.config(state=tk.NORMAL)
-
-    def redisplay_predictions():
-        def on_window_close():
-            combined_command(csv_window, output_folder_path)
-        csv_window = tk.Toplevel(root)
-        csv_window.title("Predictions")
-        csv_window.geometry("1100x500")
-        csv_window.resizable(False, False)
-        csv_window.protocol("WM_DELETE_WINDOW", on_window_close)
-
-        tree = create_treeview(csv_window, output_csv_path)
-        return_button = tk.Button(csv_window, text="Close", command=lambda: combined_command(csv_window, output_folder_path))
-        return_button.pack(side=tk.BOTTOM, anchor='w', padx=10, pady=10)
-
-    def combined_command(csv_window, folder_path):
-        for filename in os.listdir(folder_path):
-            if filename.lower().endswith('.png'):
-                file_path = os.path.join(folder_path, filename)
-                try:
-                    os.remove(file_path)
-                except Exception as e:
-                    print(f"Error deleting {file_path}: {e}")
-        csv_window.destroy()
-
-    def generate_spectrogram():
-        if file_path:
-            spectrogram_save_path = os.path.join(output_folder, f"{os.path.splitext(os.path.basename(file_path))[0]}_spectrogram.png")
-            mp3_to_spectrogram(file_path, spectrogram_save_path)
-            open_image(spectrogram_save_path)
-            transform_button.grid(row=4, column=0, padx=10, pady=5)
-
-            applymodel_path = os.path.join(script_directory, "applymodel.py")
-            if os.path.exists(applymodel_path):
-                applyindivmodel(spectrogram_save_path)
-                display_prediction()
-            else:
-                file_name.config(text="applymodel.py not found.")
-            
-            transform_button.grid_remove()
-        else:
-            file_name.config(text="No audio file selected.")
-
-    # Transforms audio file into a normalized log-spectrogram image
-    def mp3_to_spectrogram(file_path, save_path=None):
-        #if file_path.length() > 5000:
-        #    pass
-        y, sr = librosa.load(file_path, sr=16000, duration=5.0)
-
-        f, t, Zxx = spectrogram(
-            y, fs=sr, window='hamming', nperseg=int(sr * 0.108), noverlap=int(sr * 0.01)
-        )
-
-        log_Zxx = np.log1p(np.abs(Zxx))
-
-        scaler = StandardScaler()
-        z_normalized_log_Zxx = scaler.fit_transform(log_Zxx.T).T
-
-        max_db_value = 11.0
-        z_normalized_log_Zxx = np.clip(z_normalized_log_Zxx, -np.inf, max_db_value)
-
-        plt.figure(figsize=(8, 6))
-        plt.imshow(z_normalized_log_Zxx, aspect='auto', origin='lower', cmap='viridis', vmax=max_db_value)
-        plt.axis('off')
-
-        if save_path:
-            plt.savefig(save_path, bbox_inches='tight', pad_inches=0)
-            plt.close()
-        else:
-            plt.show()
-
-    def open_image(image_path):
-        original_image = Image.open(image_path)
-        resized_image = original_image.resize((250, 250))
-
-        tk_image = ImageTk.PhotoImage(resized_image)
-        image_label.config(image=tk_image)
-        image_label.image = tk_image
-        root.geometry("750x340")
-
-    script_directory = os.path.dirname(os.path.abspath(__file__))
-    output_csv_path = os.path.join(script_directory, 'mass_prediction_results.csv')
-    print(f"Script directory: {script_directory}")
-
-    sys.path.append(script_directory)
-    print(f"System path: {sys.path}")
-
-    output_folder = os.path.join(script_directory, r'Image')
-    os.makedirs(output_folder, exist_ok=True)
-
-    def display_prediction():
-        with open(output_file_path, 'r') as output_file:
-            lines = output_file.readlines()
-
-        predicted_class_line = lines[0].strip()
-        class_probabilities_line = lines[1].strip()
-
-        predicted_class = int(predicted_class_line.split(":")[1].strip())
-        class_probabilities_str = class_probabilities_line.split(":")[1].strip()
-        class_probabilities = [round(float(value) * 100, 2) for value in class_probabilities_str.strip("[]").split(",")]
-        
-        prediction_type = ""
-
-        if predicted_class == 0:
-            type_prediction.config(text=f'The audio file is LEGITIMATE')
-        elif predicted_class != 0:
-            type_prediction.config(text=f'The audio file is MODIFIED')
-        
-        match predicted_class:
-            case 0:
-                method_prediction.config(text=f'Modification Type: Unmodified')
-                prediction_type = "Unmodified"
-            case 1:
-                method_prediction.config(text=f'Modification Type: Voice Synthesis')
-                prediction_type = "Synthesis"
-            case 2:
-                method_prediction.config(text=f'Modification Type: Voice Changer')
-                prediction_type = "Voice Changer"
-            case 3:
-                method_prediction.config(text=f'Modification Type: Voice Splicing')
-                prediction_type = "Voice Splicing"
-            
-        # This is the probability of the predicted class run through a Sigmoid S Curve function that makes the numbers more readable.
-        e = math.e
-        k = 10
-        x123 = class_probabilities[predicted_class] * 0.01
-        funnum = (1/(1+e**(-k*(x123-0.3))))*100
-        guess_probability.config(text=f'Confidence Level: {funnum}%')
-        #guess_probability.config(text=f'Confidence Level: {class_probabilities[predicted_class]}%')
-        
-        alternate_probability0.place(x=475, y=125)
-        alternate_probability1.place(x=475, y=145)
-        alternate_probability2.place(x=475, y=165)
-        alternate_probability3.place(x=475, y=185)
-        
-        """
-        x0 = class_probabilities[0] * 0.01
-        x1 = class_probabilities[1] * 0.01
-        x2 = class_probabilities[2] * 0.01
-        x3 = class_probabilities[3] * 0.01
-        funnum0 = (1/(1+e**(-k*(x0-0.3))))*100
-        funnum1 = (1/(1+e**(-k*(x1-0.3))))*100
-        funnum2 = (1/(1+e**(-k*(x2-0.3))))*100
-        funnum3 = (1/(1+e**(-k*(x3-0.3))))*100
-        
-        alt_type = ["Unmodified","Synthesis","Voice Changer","Voice Splicing"]
-        alternate_probability0.config(text=f'{alt_type[0]} Probability: {funnum0}%')
-        alternate_probability1.config(text=f'{alt_type[1]} Probability: {funnum1}%')
-        alternate_probability2.config(text=f'{alt_type[2]} Probability: {funnum2}%')
-        alternate_probability3.config(text=f'{alt_type[3]} Probability: {funnum3}%')
-        """
-        
-        del_path = os.path.join(output_folder, filename[:-4] + "_spectrogram.png")
-        try:
-            os.remove(del_path)
-        except Exception as e:
-            print(f"Error deleting {del_path}: {e}")
-        
-        with open(history_file_path, "a") as history_file:
-            history_file.write(f"Filename: {filename}\n")
-            history_file.write(f"Type: {prediction_type}\n")
-            
-            e = math.e
-            k = 10
-            x123 = class_probabilities[predicted_class] * 0.01
-            funnum = (1/(1+e**(-k*(x123-0.3))))*100
-            history_file.write(f"Confidence Level: {funnum}%\n\n")
-            #history_file.write(f"Confidence Level: {class_probabilities[predicted_class]}%\n\n")
-            
-
-    def display_history():
-        def clear_history():
-            try:
-                with open(history_file_path, "r+") as history_file:
-                    history_file.truncate(0)
-                history_text.config(state=tk.NORMAL)
-                history_text.delete(1.0, tk.END)
-                history_text.insert(tk.END, "History cleared.")
-                history_text.config(state=tk.DISABLED)
-                
-            except FileNotFoundError:
-                history_text.config(state=tk.NORMAL)
-                history_text.delete(1.0, tk.END)
-                history_text.insert(tk.END, "No history found.")
-                history_text.config(state=tk.DISABLED)
-
-        history_window = tk.Toplevel(root)
-        history_window.title("Checking History")
-        history_window.geometry("620x520")
-        history_window.resizable(False, False)
-
-        frame = tk.Frame(history_window)
-        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        history_text = tk.Text(frame, wrap=tk.WORD, font=("Arial", 10))
-        history_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        scroll_bar = tk.Scrollbar(frame, command=history_text.yview)
-        scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
-        history_text.config(yscrollcommand=scroll_bar.set)
-
-        try:
-            with open(history_file_path, "r") as history_file:
-                history_data = history_file.read()
-
-            if history_data:
-                history_text.insert(tk.END, history_data)
-            else:
-                history_text.insert(tk.END, "No history found.")
-        except FileNotFoundError:
-            history_text.insert(tk.END, "No history found.")
-
-        history_text.config(state=tk.DISABLED)
-
-        clear_button = tk.Button(history_window, text="Clear History", command=clear_history)
-        clear_button.pack()
-
-    def display_documentation():
-        documentation_window = tk.Toplevel(root)
-        documentation_window.title("Documentation")
-        documentation_window.geometry("620x400")
-        documentation_window.resizable(False, False)
-
-        frame = tk.Frame(documentation_window)
-        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        documentation_text = tk.Text(frame, wrap=tk.WORD, font=("Arial", 10))
-        documentation_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        scroll_bar = tk.Scrollbar(frame, command=documentation_text.yview)
-        scroll_bar.pack(side=tk.RIGHT, fill=tk.Y)
-        documentation_text.config(yscrollcommand=scroll_bar.set)
-
-        file_path = os.path.join(script_directory, "Documentation.txt")
-        if os.path.isfile(file_path):
-            with open(file_path, "r") as file:
-                documentation = file.read()
-        else:
-            documentation = """
-            Audio DeepFake Detector Documentation
-
-            This application is designed to detect audio deepfakes. It processes audio files, transforms 
-            them into spectrograms, and uses a Convolutional Neural Network called ResEfficient 
-            CNN to classify the audio as legitimate or modified. The modifications can include various 
-            techniques such as voice synthesis, voice changers, and voice splicing.
-            
-            Instructions:
-            
-            For Individual File Checking:
-            1. Click "Open Audio File" to select an audio file.
-            2. Click "Perform Prediction" to generate the spectrogram and classify the audio.
-            3. View the prediction results displayed on the main window.
-            4. Click "View Checking History" to see past predictions.
-
-            To Check Multiple Files at Once:
-            1. Click "API Settings" to open the API menu.
-            2. Click "Mass Prediction" to select a folder with audio files to process.
-            3. Do note that depending on the number of files, processing may take a while.
-            4. View the prediction results displayed on the new window.
-            5. The results will be output to a csv file in the installation folder.
-            
-            The system is capable of detecting four types of voice audio indicated by number:
-                0 Corresponds to real unmodified voice audio.
-                1 Corresponds to synthetic or text-to-speech voice audio.
-                2 Corresponds to audio modified using a voice changer.
-                3 Corresponds to voice audio that has been cut and spliced together.
-                
-            This system works by transforming audio files into spectrogram images, and then using those
-            spectrogram images to classify the audio and determine whether the voice audio is modified,
-            and what kind of modification that voice audio has undergone.
-            
-            IMPORTANT NOTE:
-            Do note that the confidence level of the system is simply the model's output probability for
-            the given audio file to be the corresponding type. The closer the confidence level is to 50%,
-            the more confident the model is in its prediction that the audio file is what the model says
-            it is. The model is not 100% accurate however, and we cannot claim it to be. 
-            
-            To test the capabilities of the system, several files are provided in the "Test Audio" folder
-            for the user's convenience. These audio files consist of real voices, synthetic voices, voice 
-            changed voices, and voice spliced voices.
-            """
-        documentation_text.insert(tk.END, documentation)
-        documentation_text.config(state=tk.DISABLED)
-
-        return_button = tk.Button(documentation_window, text="Return to Startup", command=documentation_window.destroy)
-        return_button.pack(side=tk.BOTTOM, anchor='w', padx=10, pady=10)
-
-    def api_settings():
-        show_initial_menu()
-        for widget in root.winfo_children():
-            if isinstance(widget, tk.Button) and widget in [api_button, documentation_button]:
-                widget.grid_remove()
-        
-        folder_button.grid(row=0, column=0, padx=10, pady=5)
-        mass_history_button.grid(row=1, column=0, padx=10, pady=5)
-        mass_history_button.config(state=tk.DISABLED)
-        file_name.config(text=" ")
-        return_button.grid(row=3, column=0, padx=10, pady=5, sticky="s")
-        
-        if not os.path.isfile(output_csv_path):
-            with open(output_csv_path, 'w', newline='') as csv_file:
-                csv_writer = csv.writer(csv_file)
-                csv_writer.writerow(['FileName', 'Prediction'])
-        
-        with open(output_csv_path, 'r') as csv_file:
-            csv_reader = csv.reader(csv_file)
-            has_content = any(row for row in csv_reader if row != ['FileName', 'Prediction'])
-            if has_content:
-                mass_history_button.config(state=tk.NORMAL)
-
-    def show_initial_menu():
-        reset_prediction_display()
-        transform_button.grid_remove()
-        file_name.grid_remove()
-        for widget in root.winfo_children():
-            if isinstance(widget, tk.Tk) or isinstance(widget, tk.Frame):
-                widget.place_forget()
-        root.geometry("750x250")
-        audio_button.grid(row=0, column=0, padx=10, pady=5)
-        history_button.grid(row=1, column=0, padx=10, pady=5)
-        api_button.grid(row=2, column=0, padx=10, pady=5)
-        documentation_button.grid(row=3, column=0, padx=10, pady=5)
-        image_label.grid_remove()
-        transform_button.grid_remove()
-        return_button.grid_remove()
-        folder_button.grid_remove()
-        mass_history_button.grid_remove()
-        mass_transform_button.grid_remove()
-        file_name.config(text=" ")
-        file_name.place(x=170, y=7)
-        image_label.place(x=180, y=45)
-        guess_probability.place(x=475, y=65)
-        alternate_probability0.place_forget()
-        alternate_probability1.place_forget()
-        alternate_probability2.place_forget()
-        alternate_probability3.place_forget()
-        method_prediction.place(x=475, y=85)
-        type_prediction.place(x=475, y=45)
-    
-        # Remove the "Return" button
-        for widget in root.winfo_children():
-            if isinstance(widget, tk.Button) and widget.cget("text") == "Return":
-                widget.grid_remove()
-
-    root.title("Audio DeepFake Detector")
-    root.geometry("750x250")
-    root.resizable(False, False)
-
-    history_label = tk.Label(root, text="", wraplength=600, justify="left")
-
-    audio_button = tk.Button(root, text="Open Audio File", command=open_file_dialog, width=20, height=1)
-    folder_button = tk.Button(root, text="Mass Prediction", command=open_folder_dialog, width=20, height=1)
-    history_button = tk.Button(root, text="View Checking History", command=display_history, width=20, height=1)
-    mass_history_button = tk.Button(root, text="Review Mass Prediction", command=redisplay_predictions, width=20, height=1)
-    transform_button = tk.Button(root, text="Perform Prediction", command=generate_spectrogram, width=20, height=1)
-    mass_transform_button = tk.Button(root, text="Perform Mass Prediction", command=mass_generate_spectrogram, width=20, height=1)
-    api_button = tk.Button(root, text="API Settings", command=api_settings, width=20, height=1)
-    documentation_button = tk.Button(root, text="View Documentation", command=display_documentation, width=20, height=1)
-    return_button = tk.Button(root, text="Return", command=show_initial_menu, width=20, height=1)
-    
-
-    file_name = tk.Label(root, text="")
-    image_label = tk.Label(root)
-    guess_probability = tk.Label(root, text="")
-    alternate_probability0 = tk.Label(root, text="")
-    alternate_probability1 = tk.Label(root, text="")
-    alternate_probability2 = tk.Label(root, text="")
-    alternate_probability3 = tk.Label(root, text="")
-    
-    type_prediction = tk.Label(root, text="")
-    method_prediction = tk.Label(root, text="")
-
-    
-    audio_button.grid(row=0, column=0, padx=10, pady=5)
-    history_button.grid(row=1, column=0, padx=10, pady=5)
-    api_button.grid(row=2, column=0, padx=10, pady=5)
-    documentation_button.grid(row=3, column=0, padx=10, pady=5)
-    transform_button.grid_remove()
-
-    file_name.place(x=170, y=7)
-    image_label.place(x=180, y=45)
-    guess_probability.place(x=475, y=65)
-    alternate_probability0.place(x=475, y=125)
-    alternate_probability1.place(x=475, y=145)
-    alternate_probability2.place(x=475, y=165)
-    alternate_probability3.place(x=475, y=185)
-    method_prediction.place(x=475, y=85)
-    type_prediction.place(x=475, y=45)
-
-    root.columnconfigure(0, minsize=0)
-    root.columnconfigure(1, minsize=225)
-    root.columnconfigure(2, minsize=0)
-
-    output_file_path = os.path.join(script_directory, "prediction_results.txt")
-    output_folder_path = os.path.join(output_folder, 'Mass')
-
-    history_directory = os.path.join(script_directory, 'History')
-    os.makedirs(history_directory, exist_ok=True)
-
-    history_file_path = os.path.join(history_directory, 'history.txt')
-
-    root.mainloop()
+    app = App()
+    app.mainloop()
+
+"""
+style = ttk.Style()
+    style.theme_use("default")
+
+    style.configure("Treeview",
+                    background="#2a2d2e",
+                    foreground="white",
+                    rowheight=25,
+                    fieldbackground="#343638",
+                    bordercolor="#343638",
+                    borderwidth=0)
+    style.map('Treeview', background=[('selected', '#22559b')])
+
+    style.configure("Treeview.Heading",
+                    background="#565b5e",
+                    foreground="white",
+                    relief="flat")
+    style.map("Treeview.Heading",
+                background=[('active', '#3484F0')])`
+"""

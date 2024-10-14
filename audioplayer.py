@@ -116,11 +116,9 @@ def play_time(slider):
 
     global task_id
     if is_playing and not paused:
-        task_id = slider.after(1000, lambda: play_time(slider))
-
-def on_closing(App):
-    if task_id is not None:
-        App.after_cancel(task_id)
-    App.destroy()
+        try:
+            task_id = slider.after(1000, lambda: play_time(slider))
+        except Exception as e:
+            print(f"Error: {e}")
 
 pygame.mixer.init()

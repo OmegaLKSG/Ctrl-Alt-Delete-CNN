@@ -7,7 +7,7 @@ import csv
 
 script_directory = os.path.dirname(os.path.abspath(__file__))
 
-def massapplymodelfunc(spectrogram_folder_path, output_file_path):
+def massapplymodelfunc(spectrogram_folder_path, output_file_path, audiofilenames):
     model = SimpleCNN(num_classes=4)
     pth_path = os.path.join(script_directory, 'Mimical_Model.pth')
     model.load_state_dict(torch.load(pth_path))
@@ -33,15 +33,20 @@ def massapplymodelfunc(spectrogram_folder_path, output_file_path):
             'class_probabilities': probabilities.squeeze().tolist()
         }
     header = ['Filename', 'Predicted Class'] + [f'Class {i} Probability' for i in range(4)]
-
+    
     with open(output_file_path, 'w', newline='', encoding="utf-8") as csvfile:
         csv_writer = csv.writer(csvfile)
         csv_writer.writerow(header)
+        new_filename = ''
         print(spectrogram_folder_path)
         for filename in os.listdir(spectrogram_folder_path):
+            stripped_filename = filename.replace("_spectrogram.png", "")
+            """if stripped_filename in audiofilenames:
+                print(stripped_filename)"""
+            new_filename = stripped_filename
             file_path = os.path.join(spectrogram_folder_path, filename)
             if os.path.isfile(file_path):
-                new_filename = filename.replace("_segment_0_spectrogram.png", ".mp3")
+                #new_filename = filename.replace("_spectrogram.png", "")
                 result = classify_image(file_path)
                 row = [new_filename, result['predicted_class']] + result['class_probabilities']
                 csv_writer.writerow(row)

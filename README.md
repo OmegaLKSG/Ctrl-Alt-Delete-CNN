@@ -3,7 +3,7 @@
 
 This system is the Audio Modification Detection System. This system takes in voice audio files and detects any modifications or anomalies within those audio files. The system first determines whether the file is modified or not, and if it is modified, it also determines the kind of modification performed on that file.
 
-The executable file can be downloaded from this google drive link: https://drive.google.com/file/d/1K8UgSNPgacmzL7qJf6WOLxpcnmkR7W-7/view?usp=sharing
+The executable file can be downloaded from this google drive link: https://drive.google.com/file/d/1e1_D-abV_oKDcegEGcJ8ZhB62uyIUASS/view?usp=sharing
 
 To run the program, simply extract the file and open Start.exe. 
 
@@ -26,10 +26,10 @@ The program requires at least 400MB of free disk space. The program only works o
 
 The system opens using the Start.exe file.
  
-Clicking the “Open Audio File” button will open a file browser prompt that accepts mp3, flac, and wav files. After selecting your audio file, the audio file name will then be displayed on the UI, alongside a button that says “Perform Prediction”.
+Clicking the “Sole Audio Checking” button will open a file browser prompt that accepts mp3, flac, and wav files. After selecting your audio file, the audio file name will then be displayed on the UI, alongside a button that says “Perform Prediction”.
  
 Pressing that button will cause the program to begin loading. Once it has finished processing, it will then display the audio spectrogram of the file to the left, and the results of the analysis to the right. It shows whether the program believes the file to be LEGITIMATE or MODIFIED, its confidence level in that conclusion, and finally it shows the kind of modification that the file has.
  
-Clicking the “View Checking History” button opens up a new window that displays the previous predictions performed by the system.
+Clicking the “View Detailed History” button opens up a new window that displays the previous predictions performed by the system. You may also see an abbreviated version on the bottom right.
  
 

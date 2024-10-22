@@ -17,6 +17,7 @@ VALID_EXTENSIONS = ('.mp3', '.wav', '.flac')
 script_directory = os.path.dirname(os.path.abspath(__file__))
 output_folder = os.path.join(script_directory, r'Image')
 csv_directory = os.path.join(script_directory, r'CSV')
+doc_file_path = os.path.join(script_directory, "documentation.txt")
 #results_txt_filepath = f'{csv_directory}/prediction_results.txt'
 results_csv_filepath = f'{csv_directory}/solo_history.csv'
 output_folder_path = ''
@@ -90,7 +91,7 @@ class App(customtkinter.CTk):
         self.sidebar_button_1.grid(row=1, column=0, padx=20, pady=10)
         self.sidebar_button_2 = customtkinter.CTkButton(self.sidebar_frame, command=self.sidebar_button_2_event)
         self.sidebar_button_2.grid(row=2, column=0, padx=20, pady=10)
-        self.sidebar_button_3 = customtkinter.CTkButton(self.sidebar_frame, command=self.sidebar_button_3_event)
+        self.sidebar_button_3 = customtkinter.CTkButton(self.sidebar_frame, command=self.view_documentation_func)
         self.sidebar_button_3.grid(row=3, column=0, padx=20, pady=10)
         
         self.appearance_mode_label = customtkinter.CTkLabel(self.sidebar_frame, text="Appearance Mode:", anchor="w")
@@ -106,6 +107,7 @@ class App(customtkinter.CTk):
         self.loadingBar.grid(row=0, column=0, padx=(20, 10), pady=(10, 10), sticky="ew")
         self.loadingStatusLabel = customtkinter.CTkLabel(self.footer)
         self.loadingStatusLabel.grid(row=0, column=1, padx=(20, 10), pady=(10, 10), sticky="ew")
+        self.loadingStatusLabel.configure(text=f'Developed by CtrlAltDelete Team.')
 
         # create textbox
         self.textbox = customtkinter.CTkTextbox(self, width=250)
@@ -203,7 +205,7 @@ Click "View Documentation to see full instructions.\n\n""")
         self.textbox.configure(state='disabled')
         self.sidebar_button_1.configure(state="normal", text="Sole Audio Checking")
         self.sidebar_button_2.configure(state="normal", text="Mass Audio Checking")
-        self.sidebar_button_3.configure(state="normal", text="View Previous History")
+        self.sidebar_button_3.configure(state="normal", text="View Documentation")
         self.appearance_mode_optionemenu.set("Dark")
     
     def change_appearance_mode_event(self, new_appearance_mode: str):
@@ -303,6 +305,36 @@ Click "View Documentation to see full instructions.\n\n""")
         if create_table_solo(self.result_tabview.tab("Solo Results"), results_csv_filepath):
             self.text_label_tab1.forget()
         
+    def view_documentation_func(self):
+        # Check if the documentation window is already open
+        if not hasattr(self, 'doc_window') or self.doc_window is None or not self.doc_window.winfo_exists():
+            # Create a new Toplevel window
+            self.doc_window = customtkinter.CTkToplevel(self)
+            self.doc_window.geometry("800x600")
+            self.doc_window.title("Documentation")
+
+            # Read the documentation from a txt file
+            doc_file_path = os.path.join(script_directory, "documentation.txt")
+            if os.path.exists(doc_file_path):
+                with open(doc_file_path, "r") as doc_file:
+                    documentation_text = doc_file.read()
+            else:
+                documentation_text = "Documentation file not found."
+
+            # Create a scrollable textbox to display the content of the txt file
+            doc_textbox = customtkinter.CTkTextbox(self.doc_window, width=700, height=500)
+            doc_textbox.pack(pady=20, padx=20, fill="both", expand=True)
+
+            # Insert the content of the txt file into the textbox
+            doc_textbox.insert("0.0", documentation_text)
+            
+            # Optionally make the textbox read-only
+            doc_textbox.configure(state="disabled")
+
+        # Bring the window to focus if it already exists
+        self.doc_window.focus()
+
+        
     def open_detailed_table(self):
         if not hasattr(self, 'detailed_table') or self.detailed_table is None or not self.detailed_table.winfo_exists():
             header = ['FilePath', 'PredictedClass'] + [f'Class_{i}_Prob' for i in range(4)]
@@ -317,13 +349,17 @@ Click "View Documentation to see full instructions.\n\n""")
             self.detailed_table.focus()
     
     def open_csv_directory(self):
-        os.system(f'start {os.path.realpath(csv_directory)}')
+        print(csv_directory)
+        os.system(f'start {csv_directory}')
+        #subprocess.Popen(f'explorer /select,"{csv_directory}\a"')
         
     def open_image_directory(self):
-        os.system(f'start {os.path.realpath(output_folder)}')
+        print(output_folder)
+        os.system(f'start {output_folder}')
+        #subprocess.Popen(f'explorer /select,"{output_folder}\a"')
     
     def open_directory(self, path):
-        subprocess.Popen(f'explorer /select,"{path}\a"')
+        subprocess.Popen(f'explorer /select,"{csv_directory}\a"')
         
 if __name__ == "__main__":
     app = App()
